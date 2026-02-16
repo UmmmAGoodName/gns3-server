@@ -32,6 +32,8 @@ import logging
 
 log = logging.getLogger(__name__)
 
+auto_discover_images_task_handle = None
+
 
 def create_startup_handler(app: FastAPI) -> Callable:
     """
@@ -64,7 +66,11 @@ def create_startup_handler(app: FastAPI) -> Callable:
         if Config.instance().settings.Server.auto_discover_images is True:
             # Start the discovering new images on file system 5 seconds after the server has started
             # to give it a chance to process API requests
-            loop.call_later(5, asyncio.create_task, discover_images_on_filesystem(app))
+            global auto_discover_images_task_handle
+            auto_discover_images_task_handle = asyncio.get_event_loop().call_later(
+                5,
+                lambda: asyncio.create_task(discover_images_on_filesystem(app))
+            )
 
         for module in MODULES:
             log.debug(f"Loading module {module.__name__}")
@@ -80,6 +86,10 @@ def create_shutdown_handler(app: FastAPI) -> Callable:
     """
 
     async def shutdown_handler() -> None:
+
+        global auto_discover_images_task_handle
+        if auto_discover_images_task_handle is not None and not auto_discover_images_task_handle.cancelled():
+            auto_discover_images_task_handle.cancel()
         await HTTPClient.close_session()
         await Controller.instance().stop()
 

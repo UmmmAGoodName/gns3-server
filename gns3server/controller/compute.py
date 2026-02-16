@@ -478,7 +478,7 @@ class Compute:
             self._connected = False
             log.info(f"Connection closed to compute '{self._id}' WebSocket '{ws_url}'")
 
-        # Try to reconnect after 1 second if server unavailable only if not during tests (otherwise we create a ressources usage bomb)
+        # Try to reconnect after 1 second if server unavailable only if not during tests (otherwise we create a resources usage bomb)
         from gns3server.api.server import app
         if not app.state.exiting and not hasattr(sys, "_called_from_test"):
             log.info(f"Reconnecting to compute '{self._id}' WebSocket '{ws_url}'")

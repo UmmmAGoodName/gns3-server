@@ -68,6 +68,7 @@ class Controller:
         self._iou_license_settings = {"iourc_content": "", "license_check": False}
         self._vars_loaded = False
         self._vars_file = Config.instance().controller_vars
+        self._project_auto_open_task_handle = None
         log.info(f'Loading controller vars file "{self._vars_file}"')
 
     async def start(self, computes=None):
@@ -141,7 +142,11 @@ class Controller:
         await self.load_projects()
 
         # start to auto open projects (if configured) 5 seconds after the controller has started
-        asyncio.get_event_loop().call_later(5, asyncio.create_task, self._project_auto_open())
+        self._project_auto_open_task_handle = asyncio.get_event_loop().call_later(
+            5,
+            lambda: asyncio.create_task(self._project_auto_open())
+        )
+
 
     def _create_ssl_context(self, server_config):
 
@@ -179,6 +184,8 @@ class Controller:
     async def stop(self):
 
         log.info("Controller is stopping")
+        if self._project_auto_open_task_handle is not None and not self._project_auto_open_task_handle.cancelled():
+            self._project_auto_open_task_handle.cancel()
         for project in self._projects.values():
             await project.close()
         for compute in self._computes.values():
