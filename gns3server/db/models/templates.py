@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from sqlalchemy import Boolean, Column, String, Integer, Float, ForeignKey, PickleType
+from sqlalchemy import Boolean, Column, String, Integer, Float, ForeignKey, PickleType, JSON
 from sqlalchemy.orm import relationship
 
 from .base import BaseTable, generate_uuid, GUID
@@ -36,6 +36,7 @@ class Template(BaseTable):
     builtin = Column(Boolean, default=False)
     usage = Column(String)
     template_type = Column(String)
+    tags = Column(JSON)
     compute_id = Column(String)
     images = relationship("Image", secondary=image_template_map, back_populates="templates")
 

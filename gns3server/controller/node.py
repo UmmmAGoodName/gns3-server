@@ -97,6 +97,7 @@ class Node:
         self._y = 0
         self._z = 1  # default z value is 1
         self._locked = False
+        self._tags = []
         self._ports = None
         self._symbol = None
         self._custom_adapters = []
@@ -217,6 +218,14 @@ class Node:
     @properties.setter
     def properties(self, val):
         self._properties = val
+
+    @property
+    def tags(self):
+        return self._tags
+
+    @tags.setter
+    def tags(self, val):
+        self._tags = val
 
     def _base_config_file_content(self, path):
         if not os.path.isabs(path):
@@ -823,6 +832,7 @@ class Node:
                 "port_segment_size": self._port_segment_size,
                 "first_port_name": self._first_port_name,
                 "custom_adapters": self._custom_adapters,
+                "tags": self._tags,
         }
 
         if topology_dump:
