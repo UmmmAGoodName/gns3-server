@@ -335,3 +335,60 @@ def get_gns3_server_host() -> str:
     except Exception as e:
         logger.warning("Failed to extract host from URL %s: %s, using fallback", url, e)
         return DEFAULT_GNS3_URL.split("://")[1].split(":")[0]
+
+
+def get_llm_config(user_id, jwt_token: str) -> Optional[dict]:
+    """
+    Get LLM model configuration for a user.
+
+    This is a convenience function that retrieves the user's LLM configuration
+    from the llm_model_configs system.
+
+    Args:
+        user_id: User UUID (can be string or UUID object)
+        jwt_token: JWT token for authentication
+
+    Returns:
+        Dictionary with LLM configuration keys (provider, model, api_key, etc.),
+        or None if not found.
+
+    Example:
+        from gns3_copilot.gns3_client import get_llm_config
+
+        config = get_llm_config(user_id, jwt_token)
+        if config:
+            provider = config['provider']
+            model = config['model']
+            api_key = config['api_key']
+    """
+    import asyncio
+
+    try:
+        # Convert user_id to UUID if it's a string
+        if isinstance(user_id, str):
+            user_id = UUID(user_id)
+
+        # Detect GNS3 URL
+        url = _detect_url_for_api()
+
+        # Import the async helper
+        from gns3_copilot.utils.llm_config_helper import get_user_llm_config
+
+        # Run async function in sync context
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If loop is already running, run in a new thread
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    asyncio.run,
+                    get_user_llm_config(user_id, jwt_token, url)
+                )
+                return future.result(timeout=10)
+        else:
+            # No loop running, use run() directly
+            return asyncio.run(get_user_llm_config(user_id, jwt_token, url))
+
+    except Exception as e:
+        logger.error("Failed to get LLM config for user %s: %s", user_id, e)
+        return None

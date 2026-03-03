@@ -31,6 +31,7 @@ from .connector_factory import (
     get_gns3_connector,
     get_gns3_connector_with_llm_config,
     get_gns3_server_host,
+    get_llm_config,
 )
 from .custom_gns3fy import (
     CONSOLE_TYPES,
@@ -98,6 +99,7 @@ __all__ = [
     "get_gns3_connector",
     "get_gns3_connector_with_llm_config",
     "get_gns3_server_host",
+    "get_llm_config",
     "add_file_to_index",
     "get_file_list",
 ]
