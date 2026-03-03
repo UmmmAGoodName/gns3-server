@@ -25,6 +25,7 @@ from typing import List
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from alembic import command, config
 from alembic.script import ScriptDirectory
@@ -87,12 +88,51 @@ async def connect_to_db(app: FastAPI) -> None:
             current_rev, head_rev = await conn.run_sync(check_revision, alembic_cfg)
             log.info(f"Current database revision is {current_rev}")
             if current_rev is None:
-                await conn.run_sync(Base.metadata.create_all)
-                await conn.run_sync(run_stamp, alembic_cfg)
+                # No version tracking found. Check if this is a truly new database
+                # or an old database that needs migration.
+                def check_db_state(connection):
+                    # Check if llm_model_configs table exists
+                    inspector = sa.inspect(connection)
+                    tables = inspector.get_table_names()
+
+                    if 'users' not in tables:
+                        return 'new'  # Truly new database
+
+                    # Check for new feature columns that indicate this is already migrated
+                    columns = [col['name'] for col in inspector.get_columns('users')]
+                    if 'llm_model_configs' in tables:
+                        # The llm_model_configs table already exists (created from code)
+                        return 'new_with_llm_configs'
+                    else:
+                        # Old database without llm_model_configs table, needs migration
+                        return 'old_needs_migration'
+
+                db_state = await conn.run_sync(check_db_state)
+
+                if db_state == 'new':
+                    # Truly new database: create all tables and stamp
+                    await conn.run_sync(Base.metadata.create_all)
+                    await conn.run_sync(run_stamp, alembic_cfg)
+                    await conn.commit()
+                    log.info("Created new database and stamped to head revision")
+                elif db_state == 'new_with_llm_configs':
+                    # Database already has llm_model_configs table (from Base.metadata.create_all)
+                    # Just stamp the version
+                    await conn.run_sync(run_stamp, alembic_cfg)
+                    await conn.commit()
+                    log.info("Database has llm_model_configs table, stamped to head revision")
+                else:
+                    # Old database without llm_model_configs table: run migrations
+                    log.info("Old database detected, running migrations to add llm_model_configs table...")
+                    await conn.run_sync(run_upgrade, alembic_cfg)
+                    await conn.commit()
+                    log.info("Database migrations completed successfully")
             elif current_rev != head_rev:
                 # upgrade the database if needed
+                log.info(f"Upgrading database from revision {current_rev} to {head_rev}...")
                 await conn.run_sync(run_upgrade, alembic_cfg)
                 await conn.commit()
+                log.info("Database upgrade completed successfully")
         app.state._db_engine = engine
     except SQLAlchemyError as e:
         log.fatal(f"Error while connecting to database '{db_url}: {e}")

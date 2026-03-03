@@ -8,6 +8,7 @@ Create Date: 2026-03-03
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.
 revision = '20260303_create_llm_model_configs'
@@ -17,6 +18,17 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Get the current connection
+    conn = op.get_bind()
+    inspector = inspect(conn)
+
+    # Check if table already exists (idempotent for databases created from code)
+    tables = inspector.get_table_names()
+
+    if 'llm_model_configs' in tables:
+        # Table already exists from Base.metadata.create_all, skip creation
+        return
+
     # Create llm_model_configs table
     op.create_table(
         'llm_model_configs',
