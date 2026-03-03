@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from sqlalchemy import Column, Boolean, ForeignKey, CheckConstraint, Index, Integer, String, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, Boolean, ForeignKey, CheckConstraint, Index, Integer, String, text, JSON
 from sqlalchemy.orm import relationship
 
 from .base import BaseTable, generate_uuid, GUID
@@ -37,16 +36,16 @@ class LLMModelConfig(BaseTable):
     config_id = Column(GUID, primary_key=True, default=generate_uuid)
     name = Column(String(100), nullable=False)  # Configuration name (table-level for indexing)
     model_type = Column(String(50), nullable=False)  # Model type: text, vision, stt, tts, multimodal, etc.
-    config = Column(JSONB, nullable=False)  # Config fields: provider, base_url, model, temperature, api_key, etc.
+    config = Column(JSON, nullable=False)  # Config fields: provider, base_url, model, temperature, api_key, etc.
     user_id = Column(GUID, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=True)
     group_id = Column(GUID, ForeignKey("user_groups.user_group_id", ondelete="CASCADE"), nullable=True)
     is_default = Column(Boolean, default=False, nullable=False)
     version = Column(Integer, default=0, nullable=False)  # Optimistic locking version
 
     # Reserved fields for future use (currently unused in code)
-    reserved_jsonb_1 = Column(JSONB, nullable=True)
-    reserved_jsonb_2 = Column(JSONB, nullable=True)
-    reserved_jsonb_3 = Column(JSONB, nullable=True)
+    reserved_jsonb_1 = Column(JSON, nullable=True)
+    reserved_jsonb_2 = Column(JSON, nullable=True)
+    reserved_jsonb_3 = Column(JSON, nullable=True)
 
     # Relationships
     user = relationship("User", backref="llm_model_configs")
@@ -65,16 +64,17 @@ class LLMModelConfig(BaseTable):
             "model_type IN ('text', 'vision', 'stt', 'tts', 'multimodal', 'embedding', 'reranking', 'other')",
             name="valid_model_type_check"
         ),
-        # Each user can have at most one default config (partial unique index)
+        # Each user can have at most one default config (partial unique index, PostgreSQL only)
         Index("unique_user_default", "user_id", unique=True,
               postgresql_where=text("is_default = TRUE AND user_id IS NOT NULL")),
-        # Each group can have at most one default config (partial unique index)
+        # Each group can have at most one default config (partial unique index, PostgreSQL only)
         Index("unique_group_default", "group_id", unique=True,
               postgresql_where=text("is_default = TRUE AND group_id IS NOT NULL")),
         # Indexes for efficient queries
         Index("idx_llm_model_configs_user_id", "user_id"),
         Index("idx_llm_model_configs_group_id", "group_id"),
         Index("idx_llm_model_configs_model_type", "model_type"),
+        # GIN index for JSON config (PostgreSQL only)
         Index("idx_llm_model_configs_config", "config", postgresql_using="gin"),
     )
 
