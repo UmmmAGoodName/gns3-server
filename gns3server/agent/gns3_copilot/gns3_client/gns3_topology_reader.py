@@ -1,0 +1,132 @@
+"""
+This module provides a LangChain BaseTool to retrieve the topology of a
+ specific GNS3 project by project ID.
+"""
+
+import copy
+import logging
+from typing import Any
+
+from langchain.tools import BaseTool
+
+from gns3_copilot.gns3_client import Project, get_gns3_connector
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+
+# Define LangChain tool class
+class GNS3TopologyTool(BaseTool):
+    """LangChain tool for retrieving GNS3 project topology information."""
+
+    name: str = "gns3_topology_reader"
+    description: str = """
+    Retrieves the topology of a GNS3 project including nodes and links.
+
+    Input: `project_id` (str, required): UUID of the GNS3 project.
+
+    Output: Dictionary with:
+    - `project_id`, `name`, `status`: Project metadata
+    - `nodes`: Dict of node details (node_id, name, ports, console_port, type, etc.)
+    - `links`: List of link connections
+
+    Use this to understand network structure before making changes.
+    """
+
+    def _run(
+        self,
+        tool_input: Any = None,
+        run_manager: Any = None,
+        project_id: str | None = None,
+    ) -> dict:
+        """
+        Synchronous method to retrieve the topology of a specific GNS3 project.
+
+        Args:
+            tool_input : Input parameters, typically a dict or Pydantic model containing server_url.
+            run_manager : Callback manager for tool run.
+            project_id : The UUID of the specific GNS3 project to retrieve topology from.
+
+        Returns:
+            dict: A dictionary containing the project ID, name, status, nodes, and links,
+                  or an error dictionary if an exception occurs or project_id is not provided.
+        """
+
+        # Log received input
+        logger.info("Received tool_input: %s, project_id: %s", tool_input, project_id)
+
+        try:
+            # Validate project_id parameter
+            if not project_id:
+                logger.error("project_id parameter is required.")
+                return {
+                    "error": "project_id parameter is required. Please provide a valid project UUID."
+                }
+
+            # Initialize Gns3Connector using factory function
+            logger.info("Connecting to GNS3 server...")
+            server = get_gns3_connector()
+
+            if server is None:
+                logger.error("Failed to create GNS3 connector")
+                return {
+                    "error": "Failed to connect to GNS3 server. Please check your configuration."
+                }
+
+            # Use the provided project_id directly
+            logger.info(f"Retrieving topology for project_id: {project_id}")
+            project = Project(project_id=project_id, connector=server)
+            project.get()  # Load project details
+
+            # Get topology JSON: includes nodes (devices), links, etc.
+            topology = {
+                "project_id": project.project_id,
+                "name": project.name,
+                "status": project.status,
+                "nodes": self._clean_nodes_ports(
+                    copy.deepcopy(project.nodes_inventory())
+                ),
+                "links": project.links_summary(is_print=False),
+            }
+
+            # Log topology result
+            logger.info("Topology retrieved: %s", topology)
+
+            return topology
+
+        except Exception as e:
+            logger.error("Error retrieving GNS3 topology: %s", str(e))
+            return {"error": f"Failed to retrieve topology: {str(e)}"}
+
+    def _clean_nodes_ports(self, data: dict) -> dict:
+        """
+        Clean and simplify the nodes data structure.
+        Simplify each node's ports list to only keep name and short_name fields.
+        """
+        for node in data.values():  # Iterate through R-1, R-2, R-3, R-4
+            if "ports" in node and isinstance(node["ports"], list):
+                node["ports"] = [
+                    {"name": port["name"], "short_name": port["short_name"]}
+                    for port in node["ports"]
+                ]
+        return data
+
+
+if __name__ == "__main__":
+    from pprint import pprint
+
+    # Test the tool
+    tool = GNS3TopologyTool()
+
+    # Example usage with project_id
+    # Replace with an actual project UUID from your GNS3 server
+    example_project_id = "0c0fde25-6ead-4413-a283-ea8fd2324291"
+
+    print("Testing GNS3TopologyTool with project_id...")
+    result = tool._run(project_id=example_project_id)
+    pprint(result)
+
+    # Test without project_id (should return error)
+    print("\nTesting without project_id (should return error)...")
+    error_result = tool._run()
+    pprint(error_result)
