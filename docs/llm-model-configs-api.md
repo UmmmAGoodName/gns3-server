@@ -167,9 +167,9 @@ The `model_type` field accepts the following values:
 | `total` | integer | Total count |
 
 **Default Configuration Selection Logic:**
-1. User's config marked with `is_default: true`
-2. Group's config marked with `is_default: true` (if user has no default)
-3. First config in the list (fallback if no default is marked)
+1. User's config marked with `is_default: true` (highest priority)
+2. Group's config marked with `is_default: true`
+3. First config in the list (user configs come before group configs)
 
 ### LLMModelConfigListResponse
 

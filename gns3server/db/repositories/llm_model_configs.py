@@ -476,9 +476,6 @@ class LLMModelConfigsRepository(BaseRepository):
                 "group_name": None
             })
 
-            if config.is_default and default_config is None:
-                default_config = configs_with_source[-1]
-
         # Add inherited group configs (always shown, regardless of user configs)
         for group_id, configs in group_configs_map.items():
             for config in configs:
@@ -503,10 +500,22 @@ class LLMModelConfigsRepository(BaseRepository):
                     "group_name": group_names_map[group_id]
                 })
 
-                if config.is_default and default_config is None:
-                    default_config = configs_with_source[-1]
+        # Select default_config with proper priority:
+        # 1. User's config marked with is_default: true
+        # 2. Group's config marked with is_default: true
+        # 3. First config in the list (user configs come first)
+        for config in configs_with_source:
+            if config["is_default"] and config["source"] == "user":
+                default_config = config
+                break
 
-        # Fallback: if no config is marked as default, use the first one
+        if default_config is None:
+            for config in configs_with_source:
+                if config["is_default"] and config["source"] == "group":
+                    default_config = config
+                    break
+
+        # Fallback to first config if no default is marked
         if default_config is None and configs_with_source:
             default_config = configs_with_source[0]
 
