@@ -1,5 +1,5 @@
 """
-Model Factory for FlowNet-Lab Agent
+Model Factory for GNS3-Copilot Agent
 
 This module provides factory functions to create fresh LLM model instances.
 Configuration is loaded from the llm_model_configs system via connector_factory.

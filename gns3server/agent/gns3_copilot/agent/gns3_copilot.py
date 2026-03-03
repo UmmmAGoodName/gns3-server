@@ -1,19 +1,19 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
-# This file is part of FlowNet-Lab.
+# This file is part of GNS3-Copilot.
 #
-# FlowNet-Lab is free software: you can redistribute it and/or modify it
+# GNS3-Copilot is free software: you can redistribute it and/or modify it
 # under the terms of the GNU Affero General Public License as published by the
 # Free Software Foundation, either version 3 of the License, or (at your
 # option) any later version.
 #
-# FlowNet-Lab is distributed in the hope that it will be useful, but
+# GNS3-Copilot is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
 # or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
 # for more details.
 #
 # You should have received a copy of the GNU Affero General Public License along
-# with FlowNet-Lab. If not, see <https://www.gnu.org/licenses/>.
+# with GNS3-Copilot. If not, see <https://www.gnu.org/licenses/>.
 
 # mypy: ignore-errors
 
@@ -55,16 +55,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "backend"))
 from gns3_copilot.tools_v2 import (
     ExecuteMultipleDeviceCommands,
-    GNS3CreateAreaDrawingTool,
     GNS3CreateNodeTool,
     GNS3LinkTool,
     GNS3StartNodeTool,
     GNS3TemplateTool,
-    LinuxTelnetBatchTool,
     VPCSMultiCommands,
 )
 
-# Set up logger for FlowNet-Lab
+# Set up logger for GNS3-Copilot
 logger = logging.getLogger(__name__)
 
 # Note: LLM model configuration is now managed by the new llm_model_configs system.
@@ -79,15 +77,13 @@ tools = [
     GNS3StartNodeTool(),  # Start GNS3 nodes
     ExecuteMultipleDeviceCommands(),  # Execute show/display/debug commands on multiple devices (READ-ONLY)
     VPCSMultiCommands(),  # Execute VPCS commands on multiple devices
-    LinuxTelnetBatchTool(),  # Execute Linux commands via Telnet on multiple devices
-    GNS3CreateAreaDrawingTool(),  # Create area drawings in GNS3 topologies
 ]
 # Augment the LLM with tools
 tools_by_name = {tool.name: tool for tool in tools}
 # Model with tools will be created dynamically by the factory when needed
 
 # Log application startup
-logger.info("FlowNet-Lab application starting up")
+logger.info("GNS3-Copilot application starting up")
 
 # Constants for conversation title management
 DEFAULT_CONVERSATION_TITLE = "New Conversation"
@@ -98,7 +94,7 @@ TITLE_MAX_LENGTH = 40
 # Define state
 class MessagesState(TypedDict):
     """
-    FlowNet-Lab conversation state management class.
+    GNS3-Copilot conversation state management class.
 
     Maintains the conversation state for the LangGraph workflow, including message history,
     call counters, and session titles for comprehensive dialogue management.

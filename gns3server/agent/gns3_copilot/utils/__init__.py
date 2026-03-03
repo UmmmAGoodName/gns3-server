@@ -1,5 +1,5 @@
 """
-FlowNet-Lab Public Model Package
+GNS3-Copilot Public Model Package
 
 This package provides reusable public models and utilities for GNS3 network automation tasks.
 It contains common functionality that can be shared across different tools and modules.

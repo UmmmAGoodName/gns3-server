@@ -1,7 +1,7 @@
 """
-FlowNet-Lab Agent Package
+GNS3-Copilot Agent Package
 
-This package contains the main FlowNet-Lab agent implementation for network automation tasks.
+This package contains the main GNS3-Copilot agent implementation for network automation tasks.
 """
 
 from .gns3_copilot import agent_builder

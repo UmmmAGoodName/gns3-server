@@ -1,7 +1,7 @@
 """
-FlowNet-Lab - AI-powered network automation assistant for GNS3.
+GNS3-Copilot - AI-powered network automation assistant for GNS3.
 
-This package provides a command-line interface for launching the FlowNet-Lab
+This package provides a command-line interface for launching the GNS3-Copilot
 Streamlit application with support for Streamlit parameter passthrough.
 """
 
