@@ -20,6 +20,7 @@ from typing import Optional, List, Dict, Any
 from sqlalchemy import select, update, delete, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from datetime import datetime
 
 import json
 import logging
@@ -84,12 +85,16 @@ class LLMModelConfigsRepository(BaseRepository):
                 log.error(f"Failed to encrypt API key: {e}")
                 raise
 
+        # Set timestamps manually for SQLite compatibility
+        now = datetime.utcnow()
         db_config = models.LLMModelConfig(
             name=name,
             model_type=model_type,
             config=config_to_store,
             user_id=user_id,
-            is_default=is_default
+            is_default=is_default,
+            created_at=now,
+            updated_at=now
         )
         self._db_session.add(db_config)
         await self._db_session.commit()
@@ -168,6 +173,8 @@ class LLMModelConfigsRepository(BaseRepository):
         db_config.config = current_config
         # Increment version for optimistic locking
         db_config.version = db_config.version + 1
+        # Update timestamp manually for SQLite compatibility
+        db_config.updated_at = datetime.utcnow()
         await self._db_session.commit()
         await self._db_session.refresh(db_config)
         return db_config
@@ -186,6 +193,7 @@ class LLMModelConfigsRepository(BaseRepository):
 
     async def set_user_default_config(self, user_id: UUID, config_id: UUID) -> bool:
         """Set a user's default LLM model configuration."""
+        now = datetime.utcnow()
         # First, unset current default
         await self._db_session.execute(
             update(models.LLMModelConfig)
@@ -195,7 +203,7 @@ class LLMModelConfigsRepository(BaseRepository):
                     models.LLMModelConfig.is_default == True
                 )
             )
-            .values(is_default=False)
+            .values(is_default=False, updated_at=now)
         )
 
         # Set new default
@@ -204,7 +212,7 @@ class LLMModelConfigsRepository(BaseRepository):
                 models.LLMModelConfig.config_id == config_id,
                 models.LLMModelConfig.user_id == user_id
             )
-        ).values(is_default=True)
+        ).values(is_default=True, updated_at=now)
         result = await self._db_session.execute(query)
         await self._db_session.commit()
         return result.rowcount > 0
@@ -260,12 +268,16 @@ class LLMModelConfigsRepository(BaseRepository):
                 log.error(f"Failed to encrypt API key: {e}")
                 raise
 
+        # Set timestamps manually for SQLite compatibility
+        now = datetime.utcnow()
         db_config = models.LLMModelConfig(
             name=name,
             model_type=model_type,
             config=config_to_store,
             group_id=group_id,
-            is_default=is_default
+            is_default=is_default,
+            created_at=now,
+            updated_at=now
         )
         self._db_session.add(db_config)
         await self._db_session.commit()
@@ -344,6 +356,8 @@ class LLMModelConfigsRepository(BaseRepository):
         db_config.config = current_config
         # Increment version for optimistic locking
         db_config.version = db_config.version + 1
+        # Update timestamp manually for SQLite compatibility
+        db_config.updated_at = datetime.utcnow()
         await self._db_session.commit()
         await self._db_session.refresh(db_config)
         return db_config
@@ -362,6 +376,7 @@ class LLMModelConfigsRepository(BaseRepository):
 
     async def set_group_default_config(self, group_id: UUID, config_id: UUID) -> bool:
         """Set a group's default LLM model configuration."""
+        now = datetime.utcnow()
         # First, unset current default
         await self._db_session.execute(
             update(models.LLMModelConfig)
@@ -371,7 +386,7 @@ class LLMModelConfigsRepository(BaseRepository):
                     models.LLMModelConfig.is_default == True
                 )
             )
-            .values(is_default=False)
+            .values(is_default=False, updated_at=now)
         )
 
         # Set new default
@@ -380,7 +395,7 @@ class LLMModelConfigsRepository(BaseRepository):
                 models.LLMModelConfig.config_id == config_id,
                 models.LLMModelConfig.group_id == group_id
             )
-        ).values(is_default=True)
+        ).values(is_default=True, updated_at=now)
         result = await self._db_session.execute(query)
         await self._db_session.commit()
         return result.rowcount > 0
