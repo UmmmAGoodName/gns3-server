@@ -68,6 +68,8 @@ class LLMModelConfigsRepository(BaseRepository):
     async def create_user_config(
         self,
         user_id: UUID,
+        name: str,
+        model_type: str,
         config_data: Dict[str, Any],
         is_default: bool = False
     ) -> models.LLMModelConfig:
@@ -83,6 +85,8 @@ class LLMModelConfigsRepository(BaseRepository):
                 raise
 
         db_config = models.LLMModelConfig(
+            name=name,
+            model_type=model_type,
             config=config_to_store,
             user_id=user_id,
             is_default=is_default
@@ -130,21 +134,36 @@ class LLMModelConfigsRepository(BaseRepository):
 
         # Encrypt API key if present in updates
         from gns3server.utils.encryption import encrypt
-        updates_copy = updates.copy()
-        if "api_key" in updates_copy and updates_copy["api_key"]:
-            try:
-                updates_copy["api_key"] = encrypt(updates_copy["api_key"])
-            except Exception as e:
-                log.error(f"Failed to encrypt API key: {e}")
-                raise
 
-        # Update config JSONB fields
+        # Table-level fields
+        if "name" in updates and updates["name"] is not None:
+            db_config.name = updates["name"]
+        if "model_type" in updates and updates["model_type"] is not None:
+            db_config.model_type = updates["model_type"]
+        if "is_default" in updates and updates["is_default"] is not None:
+            db_config.is_default = updates["is_default"]
+
+        # Config JSONB fields
+        config_fields = ["provider", "base_url", "model", "temperature", "api_key", "max_tokens"]
         current_config = db_config.config.copy()
-        for key, value in updates_copy.items():
-            if key == "is_default":
-                db_config.is_default = value
-            elif value is not None:
-                current_config[key] = value
+
+        for field in config_fields:
+            if field in updates and updates[field] is not None:
+                if field == "api_key":
+                    # Encrypt API key
+                    try:
+                        current_config[field] = encrypt(updates[field])
+                    except Exception as e:
+                        log.error(f"Failed to encrypt API key: {e}")
+                        raise
+                else:
+                    current_config[field] = updates[field]
+
+        # Handle extra config fields
+        for key, value in updates.items():
+            if key not in ["name", "model_type", "is_default", "expected_version"] + config_fields:
+                if value is not None:
+                    current_config[key] = value
 
         db_config.config = current_config
         # Increment version for optimistic locking
@@ -225,6 +244,8 @@ class LLMModelConfigsRepository(BaseRepository):
     async def create_group_config(
         self,
         group_id: UUID,
+        name: str,
+        model_type: str,
         config_data: Dict[str, Any],
         is_default: bool = False
     ) -> models.LLMModelConfig:
@@ -240,6 +261,8 @@ class LLMModelConfigsRepository(BaseRepository):
                 raise
 
         db_config = models.LLMModelConfig(
+            name=name,
+            model_type=model_type,
             config=config_to_store,
             group_id=group_id,
             is_default=is_default
@@ -287,21 +310,36 @@ class LLMModelConfigsRepository(BaseRepository):
 
         # Encrypt API key if present in updates
         from gns3server.utils.encryption import encrypt
-        updates_copy = updates.copy()
-        if "api_key" in updates_copy and updates_copy["api_key"]:
-            try:
-                updates_copy["api_key"] = encrypt(updates_copy["api_key"])
-            except Exception as e:
-                log.error(f"Failed to encrypt API key: {e}")
-                raise
 
-        # Update config JSONB fields
+        # Table-level fields
+        if "name" in updates and updates["name"] is not None:
+            db_config.name = updates["name"]
+        if "model_type" in updates and updates["model_type"] is not None:
+            db_config.model_type = updates["model_type"]
+        if "is_default" in updates and updates["is_default"] is not None:
+            db_config.is_default = updates["is_default"]
+
+        # Config JSONB fields
+        config_fields = ["provider", "base_url", "model", "temperature", "api_key", "max_tokens"]
         current_config = db_config.config.copy()
-        for key, value in updates_copy.items():
-            if key == "is_default":
-                db_config.is_default = value
-            elif value is not None:
-                current_config[key] = value
+
+        for field in config_fields:
+            if field in updates and updates[field] is not None:
+                if field == "api_key":
+                    # Encrypt API key
+                    try:
+                        current_config[field] = encrypt(updates[field])
+                    except Exception as e:
+                        log.error(f"Failed to encrypt API key: {e}")
+                        raise
+                else:
+                    current_config[field] = updates[field]
+
+        # Handle extra config fields
+        for key, value in updates.items():
+            if key not in ["name", "model_type", "is_default", "expected_version"] + config_fields:
+                if value is not None:
+                    current_config[key] = value
 
         db_config.config = current_config
         # Increment version for optimistic locking
@@ -392,6 +430,8 @@ class LLMModelConfigsRepository(BaseRepository):
 
             configs_with_source.append({
                 "config_id": config.config_id,
+                "name": config.name,
+                "model_type": config.model_type,
                 "source": "user",
                 "group_name": None,
                 "is_default": config.is_default,
@@ -416,6 +456,8 @@ class LLMModelConfigsRepository(BaseRepository):
 
                     configs_with_source.append({
                         "config_id": config.config_id,
+                        "name": config.name,
+                        "model_type": config.model_type,
                         "source": "group",
                         "group_name": group_names_map[group_id],
                         "is_default": config.is_default,

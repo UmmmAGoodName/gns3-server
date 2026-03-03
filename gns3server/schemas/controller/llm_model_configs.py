@@ -14,21 +14,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Optional, Dict, Any
+from typing import Optional, List, Literal
 from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
 
 from .base import DateTimeModelMixin
 
 
+# Valid model types
+ModelType = Literal['text', 'vision', 'stt', 'tts', 'multimodal', 'embedding', 'reranking', 'other']
+
+
 # Core model config schema (stored in config JSONB field)
 class LLMModelConfigData(BaseModel):
     """
     LLM model configuration data.
-    All fields are stored in the config JSONB column.
+    Stored in the config JSONB column (provider, base_url, model, etc.).
     """
 
-    name: str = Field(..., min_length=1, max_length=100, description="Configuration name")
     provider: str = Field(..., description="LLM provider (e.g., 'openai', 'anthropic', 'ollama')")
     base_url: str = Field(..., description="API base URL")
     model: str = Field(..., description="Model name")
@@ -41,26 +44,42 @@ class LLMModelConfigData(BaseModel):
 
 
 # Request schemas
-class LLMModelConfigCreate(LLMModelConfigData):
+class LLMModelConfigCreate(BaseModel):
     """Request to create a new LLM model configuration."""
 
+    name: str = Field(..., min_length=1, max_length=100, description="Configuration name")
+    model_type: ModelType = Field(..., description="Model type")
     is_default: Optional[bool] = Field(False, description="Set as default configuration")
+    # Config fields
+    provider: str = Field(..., description="LLM provider")
+    base_url: str = Field(..., description="API base URL")
+    model: str = Field(..., description="Model name")
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    api_key: Optional[str] = None
+    max_tokens: Optional[int] = Field(None, gt=0)
+
+    # Allow extra config fields
+    model_config = ConfigDict(extra="allow")
 
 
 class LLMModelConfigUpdate(BaseModel):
     """Request to update an existing LLM model configuration."""
 
+    # Table-level fields
     name: Optional[str] = Field(None, min_length=1, max_length=100)
+    model_type: Optional[ModelType] = None
+    is_default: Optional[bool] = None
+    expected_version: Optional[int] = Field(None, description="Expected version for optimistic locking")
+
+    # Config fields
     provider: Optional[str] = None
     base_url: Optional[str] = None
     model: Optional[str] = None
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
     api_key: Optional[str] = None
     max_tokens: Optional[int] = Field(None, gt=0)
-    is_default: Optional[bool] = None
-    expected_version: Optional[int] = Field(None, description="Expected version for optimistic locking")
 
-    # Allow extra fields for extensibility
+    # Allow extra config fields
     model_config = ConfigDict(extra="allow")
 
 
@@ -69,6 +88,8 @@ class LLMModelConfigResponse(DateTimeModelMixin):
     """LLM model configuration response."""
 
     config_id: UUID
+    name: str
+    model_type: ModelType
     config: LLMModelConfigData
     user_id: Optional[UUID] = None
     group_id: Optional[UUID] = None
@@ -78,22 +99,25 @@ class LLMModelConfigResponse(DateTimeModelMixin):
     model_config = ConfigDict(from_attributes=True)
 
 
-class LLMModelConfigListResponse(BaseModel):
-    """Response containing list of LLM model configurations."""
-
-    configs: list[LLMModelConfigData]
-    default_config_id: Optional[UUID] = None
-    total: int
-
-
-# Inheritance response (user configs + inherited group configs)
-class LLMModelConfigWithSource(LLMModelConfigData):
-    """Model configuration with source information."""
+class LLMModelConfigWithSource(BaseModel):
+    """Model configuration with source information (for inheritance)."""
 
     config_id: UUID
+    name: str
+    model_type: ModelType
     source: str = Field(..., description="Source: 'user' or 'group'")
     group_name: Optional[str] = Field(None, description="Group name if source is 'group'")
     is_default: bool
+    # Config fields
+    provider: str
+    base_url: str
+    model: str
+    temperature: float
+    api_key: Optional[str] = None
+    max_tokens: Optional[int] = None
+
+    # Allow extra config fields
+    model_config = ConfigDict(extra="allow")
 
 
 class LLMModelConfigInheritedResponse(BaseModel):

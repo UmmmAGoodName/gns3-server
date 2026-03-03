@@ -97,6 +97,8 @@ async def get_user_own_llm_model_configs(
         return [
             schemas.LLMModelConfigResponse(
                 config_id=config.config_id,
+                name=config.name,
+                model_type=config.model_type,
                 config=config.config,
                 user_id=config.user_id,
                 group_id=config.group_id,
@@ -139,15 +141,20 @@ async def create_user_llm_model_config(
         raise ControllerNotFoundError(f"User '{user_id}' not found")
 
     try:
-        config_data = config_create.model_dump(exclude={"is_default"})
+        # Extract config fields (excluding table-level fields)
+        config_fields = config_create.model_dump(exclude={"name", "model_type", "is_default"})
         new_config = await llm_repo.create_user_config(
             user_id,
-            config_data,
+            config_create.name,
+            config_create.model_type,
+            config_fields,
             is_default=config_create.is_default
         )
 
         return schemas.LLMModelConfigResponse(
             config_id=new_config.config_id,
+            name=new_config.name,
+            model_type=new_config.model_type,
             config=new_config.config,
             user_id=new_config.user_id,
             group_id=new_config.group_id,
@@ -206,6 +213,8 @@ async def update_user_llm_model_config(
 
         return schemas.LLMModelConfigResponse(
             config_id=updated_config.config_id,
+            name=updated_config.name,
+            model_type=updated_config.model_type,
             config=updated_config.config,
             user_id=updated_config.user_id,
             group_id=updated_config.group_id,
@@ -293,6 +302,8 @@ async def set_user_default_llm_model_config(
         config = await llm_repo.get_user_config(config_id)
         return schemas.LLMModelConfigResponse(
             config_id=config.config_id,
+            name=config.name,
+            model_type=config.model_type,
             config=config.config,
             user_id=config.user_id,
             group_id=config.group_id,
@@ -335,6 +346,8 @@ async def get_group_llm_model_configs(
         return [
             schemas.LLMModelConfigResponse(
                 config_id=config.config_id,
+                name=config.name,
+                model_type=config.model_type,
                 config=config.config,
                 user_id=config.user_id,
                 group_id=config.group_id,
@@ -377,15 +390,20 @@ async def create_group_llm_model_config(
         raise ControllerNotFoundError(f"User group '{group_id}' not found")
 
     try:
-        config_data = config_create.model_dump(exclude={"is_default"})
+        # Extract config fields (excluding table-level fields)
+        config_fields = config_create.model_dump(exclude={"name", "model_type", "is_default"})
         new_config = await llm_repo.create_group_config(
             group_id,
-            config_data,
+            config_create.name,
+            config_create.model_type,
+            config_fields,
             is_default=config_create.is_default
         )
 
         return schemas.LLMModelConfigResponse(
             config_id=new_config.config_id,
+            name=new_config.name,
+            model_type=new_config.model_type,
             config=new_config.config,
             user_id=new_config.user_id,
             group_id=new_config.group_id,
@@ -444,6 +462,8 @@ async def update_group_llm_model_config(
 
         return schemas.LLMModelConfigResponse(
             config_id=updated_config.config_id,
+            name=updated_config.name,
+            model_type=updated_config.model_type,
             config=updated_config.config,
             user_id=updated_config.user_id,
             group_id=updated_config.group_id,
@@ -531,6 +551,8 @@ async def set_group_default_llm_model_config(
         config = await llm_repo.get_group_config(config_id)
         return schemas.LLMModelConfigResponse(
             config_id=config.config_id,
+            name=config.name,
+            model_type=config.model_type,
             config=config.config,
             user_id=config.user_id,
             group_id=config.group_id,

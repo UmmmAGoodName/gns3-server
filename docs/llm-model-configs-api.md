@@ -36,13 +36,30 @@ User's own config > User's group config
 | Column | Type | Description |
 |--------|------|-------------|
 | `config_id` | UUID | Primary key |
-| `config` | JSONB | Configuration data (name, provider, model, etc.) |
+| `name` | VARCHAR(100) | Configuration name (table-level for indexing) |
+| `model_type` | VARCHAR(50) | Model type (table-level for filtering) |
+| `config` | JSONB | Configuration data (provider, base_url, model, temperature, api_key, etc.) |
 | `user_id` | UUID (nullable) | Foreign key to users table |
 | `group_id` | UUID (nullable) | Foreign key to user_groups table |
 | `is_default` | BOOLEAN | Default configuration flag |
 | `version` | INTEGER | Optimistic locking version (starts at 0, increments on each update) |
+| `reserved_jsonb_1` | JSONB (nullable) | Reserved field for future use |
+| `reserved_jsonb_2` | JSONB (nullable) | Reserved field for future use |
+| `reserved_jsonb_3` | JSONB (nullable) | Reserved field for future use |
 | `created_at` | TIMESTAMP | Creation timestamp |
 | `updated_at` | TIMESTAMP | Last update timestamp |
+
+### Model Types
+
+The `model_type` field accepts the following values:
+- `text` - Text generation models
+- `vision` - Vision/image understanding models
+- `stt` - Speech-to-Text models
+- `tts` - Text-to-Speech models
+- `multimodal` - Multimodal models supporting multiple input types
+- `embedding` - Text embedding models
+- `reranking` - Reranking models
+- `other` - Other model types
 
 ### Constraints
 
@@ -87,6 +104,7 @@ User's own config > User's group config
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | string | Configuration name (1-100 chars) |
+| `model_type` | string | Model type (text, vision, stt, tts, multimodal, embedding, reranking, other) |
 | `provider` | string | LLM provider (e.g., "openai", "anthropic", "ollama") |
 | `base_url` | string | API base URL |
 | `model` | string | Model name |
@@ -107,6 +125,7 @@ User's own config > User's group config
 | Field | Type | Description |
 |-------|------|-------------|
 | `name` | string (optional) | Configuration name |
+| `model_type` | string (optional) | Model type |
 | `provider` | string (optional) | LLM provider |
 | `base_url` | string (optional) | API base URL |
 | `model` | string (optional) | Model name |
@@ -123,7 +142,9 @@ User's own config > User's group config
 | Field | Type | Description |
 |-------|------|-------------|
 | `config_id` | UUID | Configuration ID |
-| `config` | LLMModelConfigData | Configuration data |
+| `name` | string | Configuration name |
+| `model_type` | string | Model type |
+| `config` | LLMModelConfigData | Configuration data (provider, base_url, model, temperature, etc.) |
 | `user_id` | UUID (nullable) | Owner user ID |
 | `group_id` | UUID (nullable) | Owner group ID |
 | `is_default` | boolean | Default flag |
@@ -139,6 +160,23 @@ User's own config > User's group config
 | `default_config` | LLMModelConfigWithSource (nullable) | Default configuration |
 | `total` | integer | Total count |
 
+### LLMModelConfigWithSource
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `config_id` | UUID | Configuration ID |
+| `name` | string | Configuration name |
+| `model_type` | string | Model type |
+| `source` | string | Source: "user" or "group" |
+| `group_name` | string (nullable) | Group name if source is "group" |
+| `is_default` | boolean | Default flag |
+| `provider` | string | LLM provider |
+| `base_url` | string | API base URL |
+| `model` | string | Model name |
+| `temperature` | float | Temperature |
+| `api_key` | string (nullable) | API key |
+| `max_tokens` | integer (nullable) | Max tokens |
+
 ---
 
 ## Usage Examples
@@ -151,6 +189,7 @@ curl -X POST http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
   -H "Content-Type: application/json" \
   -d '{
     "name": "GPT-4",
+    "model_type": "text",
     "provider": "openai",
     "base_url": "https://api.openai.com/v1",
     "model": "gpt-4",
@@ -164,8 +203,9 @@ curl -X POST http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
 ```json
 {
   "config_id": "uuid-1",
+  "name": "GPT-4",
+  "model_type": "text",
   "config": {
-    "name": "GPT-4",
     "provider": "openai",
     "base_url": "https://api.openai.com/v1",
     "model": "gpt-4",
@@ -189,6 +229,7 @@ curl -X POST http://localhost:3080/v3/access/groups/{group_id}/llm-model-configs
   -H "Content-Type: application/json" \
   -d '{
     "name": "Claude-3",
+    "model_type": "text",
     "provider": "anthropic",
     "base_url": "https://api.anthropic.com",
     "model": "claude-3-opus-20240229",
@@ -211,10 +252,11 @@ curl -X GET http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
   "configs": [
     {
       "config_id": "uuid-1",
+      "name": "GPT-4",
+      "model_type": "text",
       "source": "user",
       "group_name": null,
       "is_default": true,
-      "name": "GPT-4",
       "provider": "openai",
       "model": "gpt-4",
       "base_url": "https://api.openai.com/v1",
@@ -224,10 +266,12 @@ curl -X GET http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
   ],
   "default_config": {
     "config_id": "uuid-1",
+    "name": "GPT-4",
+    "model_type": "text",
     "source": "user",
     "group_name": null,
     "is_default": true,
-    "name": "GPT-4",
+    "provider": "openai",
     ...
   },
   "total": 1
@@ -240,10 +284,11 @@ curl -X GET http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
   "configs": [
     {
       "config_id": "uuid-2",
+      "name": "Claude-3",
+      "model_type": "text",
       "source": "group",
       "group_name": "Developers",
       "is_default": true,
-      "name": "Claude-3",
       "provider": "anthropic",
       "model": "claude-3-opus-20240229",
       "base_url": "https://api.anthropic.com",
@@ -253,6 +298,8 @@ curl -X GET http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
   ],
   "default_config": {
     "config_id": "uuid-2",
+    "name": "Claude-3",
+    "model_type": "text",
     "source": "group",
     "group_name": "Developers",
     "is_default": true,
@@ -441,3 +488,59 @@ The old user settings API (`/v3/access/users/{user_id}/profiles`) stored configu
 - **Optimistic locking**: New `version` field and `expected_version` parameter
 - **Dedicated table**: Better query performance and data integrity
 - **Transparent encryption**: API keys auto-encrypted/decrypted by the API
+- **Model type support**: New `model_type` field for categorizing models (text, vision, stt, tts, multimodal, embedding, reranking, other)
+- **Table-level indexing**: `name` and `model_type` stored as table columns for efficient filtering and querying
+
+---
+
+## Model Type Filtering
+
+The `model_type` table column enables efficient filtering and querying of configurations by model type:
+
+### Common Use Cases
+
+1. **Filter by model type**: Retrieve only text generation models for chat features
+2. **Multi-model applications**: Select appropriate model based on task type (text vs vision vs embedding)
+3. **Model type analytics**: Query and analyze usage patterns by model type
+4. **Type-specific defaults**: Set different default models for different model types
+
+### Example: Filter text models (client-side)
+
+```python
+# After fetching configs, filter by model_type
+configs = get_user_configs(user_id)
+text_models = [c for c in configs if c["model_type"] == "text"]
+vision_models = [c for c in configs if c["model_type"] == "vision"]
+```
+
+### Database Index
+
+The `model_type` column is indexed for efficient queries:
+```sql
+CREATE INDEX idx_llm_model_configs_model_type ON llm_model_configs(model_type);
+```
+
+This enables fast lookups when filtering by model type, even with large datasets.
+
+---
+
+## Reserved Fields
+
+The `llm_model_configs` table includes three reserved JSONB fields for future extensibility:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `reserved_jsonb_1` | JSONB (nullable) | Reserved for future use |
+| `reserved_jsonb_2` | JSONB (nullable) | Reserved for future use |
+| `reserved_jsonb_3` | JSONB (nullable) | Reserved for future use |
+
+**Purpose:** These fields are reserved for future feature development without requiring schema changes. They are currently unused in the API code but are available in the database layer for future enhancements.
+
+**Use Cases:** Future features might use these fields for:
+- Advanced configuration options
+- Metadata storage
+- Feature flags
+- Extension data
+- Caching computed values
+
+**Note:** These fields are not exposed in the current API schemas and are reserved for internal use.

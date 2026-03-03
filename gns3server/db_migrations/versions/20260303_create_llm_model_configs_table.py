@@ -33,6 +33,8 @@ def upgrade() -> None:
     op.create_table(
         'llm_model_configs',
         sa.Column('config_id', postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column('name', sa.String(100), nullable=False),
+        sa.Column('model_type', sa.String(50), nullable=False),
         sa.Column('config', postgresql.JSONB(), nullable=False),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=True),
         sa.Column('group_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('user_groups.user_group_id', ondelete='CASCADE'), nullable=True),
@@ -40,10 +42,17 @@ def upgrade() -> None:
         sa.Column('version', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('created_at', sa.DateTime(), nullable=True),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
+        sa.Column('reserved_jsonb_1', postgresql.JSONB(), nullable=True, comment='Reserved field for future use'),
+        sa.Column('reserved_jsonb_2', postgresql.JSONB(), nullable=True, comment='Reserved field for future use'),
+        sa.Column('reserved_jsonb_3', postgresql.JSONB(), nullable=True, comment='Reserved field for future use'),
         sa.CheckConstraint(
             "(user_id IS NOT NULL AND group_id IS NULL) OR "
             "(user_id IS NULL AND group_id IS NOT NULL)",
             name='single_owner_check'
+        ),
+        sa.CheckConstraint(
+            "model_type IN ('text', 'vision', 'stt', 'tts', 'multimodal', 'embedding', 'reranking', 'other')",
+            name='valid_model_type_check'
         ),
         sa.UniqueConstraint(
             'user_id', 'is_default',
@@ -62,12 +71,14 @@ def upgrade() -> None:
     # Create indexes for efficient queries
     op.create_index('idx_llm_model_configs_user_id', 'llm_model_configs', ['user_id'])
     op.create_index('idx_llm_model_configs_group_id', 'llm_model_configs', ['group_id'])
+    op.create_index('idx_llm_model_configs_model_type', 'llm_model_configs', ['model_type'])
     op.create_index('idx_llm_model_configs_config', 'llm_model_configs', ['config'], postgresql_using='gin')
 
 
 def downgrade() -> None:
     # Drop indexes
     op.drop_index('idx_llm_model_configs_config', table_name='llm_model_configs')
+    op.drop_index('idx_llm_model_configs_model_type', table_name='llm_model_configs')
     op.drop_index('idx_llm_model_configs_group_id', table_name='llm_model_configs')
     op.drop_index('idx_llm_model_configs_user_id', table_name='llm_model_configs')
 

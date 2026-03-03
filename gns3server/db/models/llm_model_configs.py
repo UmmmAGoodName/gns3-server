@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from sqlalchemy import Column, Boolean, ForeignKey, CheckConstraint, UniqueConstraint, Index, Integer
+from sqlalchemy import Column, Boolean, ForeignKey, CheckConstraint, UniqueConstraint, Index, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -35,11 +35,18 @@ class LLMModelConfig(BaseTable):
     __tablename__ = "llm_model_configs"
 
     config_id = Column(GUID, primary_key=True, default=generate_uuid)
-    config = Column(JSONB, nullable=False)  # All config fields including name, provider, etc.
+    name = Column(String(100), nullable=False)  # Configuration name (table-level for indexing)
+    model_type = Column(String(50), nullable=False)  # Model type: text, vision, stt, tts, multimodal, etc.
+    config = Column(JSONB, nullable=False)  # Config fields: provider, base_url, model, temperature, api_key, etc.
     user_id = Column(GUID, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=True)
     group_id = Column(GUID, ForeignKey("user_groups.user_group_id", ondelete="CASCADE"), nullable=True)
     is_default = Column(Boolean, default=False, nullable=False)
     version = Column(Integer, default=0, nullable=False)  # Optimistic locking version
+
+    # Reserved fields for future use (currently unused in code)
+    reserved_jsonb_1 = Column(JSONB, nullable=True)
+    reserved_jsonb_2 = Column(JSONB, nullable=True)
+    reserved_jsonb_3 = Column(JSONB, nullable=True)
 
     # Relationships
     user = relationship("User", backref="llm_model_configs")
@@ -53,6 +60,11 @@ class LLMModelConfig(BaseTable):
             "(user_id IS NULL AND group_id IS NOT NULL)",
             name="single_owner_check"
         ),
+        # Validate model_type values
+        CheckConstraint(
+            "model_type IN ('text', 'vision', 'stt', 'tts', 'multimodal', 'embedding', 'reranking', 'other')",
+            name="valid_model_type_check"
+        ),
         # Each user can have at most one default config
         UniqueConstraint("user_id", "is_default", name="unique_user_default",
                          deferrable=True, initially="deferred",
@@ -64,10 +76,10 @@ class LLMModelConfig(BaseTable):
         # Indexes for efficient queries
         Index("idx_llm_model_configs_user_id", "user_id"),
         Index("idx_llm_model_configs_group_id", "group_id"),
+        Index("idx_llm_model_configs_model_type", "model_type"),
         Index("idx_llm_model_configs_config", "config", postgresql_using="gin"),
     )
 
     def __repr__(self):
-        config_name = self.config.get("name", "unnamed") if self.config else "unnamed"
         owner = f"user_{self.user_id}" if self.user_id else f"group_{self.group_id}"
-        return f"<LLMModelConfig {config_name} for {owner} (default={self.is_default}, version={self.version})>"
+        return f"<LLMModelConfig {self.name} ({self.model_type}) for {owner} (default={self.is_default}, version={self.version})>"
