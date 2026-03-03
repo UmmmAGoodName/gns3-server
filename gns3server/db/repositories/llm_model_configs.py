@@ -465,10 +465,15 @@ class LLMModelConfigsRepository(BaseRepository):
                 "config_id": config.config_id,
                 "name": config.name,
                 "model_type": config.model_type,
-                "source": "user",
-                "group_name": None,
+                "config": config_dict,
+                "user_id": config.user_id,
+                "group_id": config.group_id,
                 "is_default": config.is_default,
-                **config_dict
+                "version": config.version,
+                "created_at": config.created_at,
+                "updated_at": config.updated_at,
+                "source": "user",
+                "group_name": None
             })
 
             if config.is_default and default_config is None:
@@ -487,10 +492,15 @@ class LLMModelConfigsRepository(BaseRepository):
                     "config_id": config.config_id,
                     "name": config.name,
                     "model_type": config.model_type,
-                    "source": "group",
-                    "group_name": group_names_map[group_id],
+                    "config": config_dict,
+                    "user_id": config.user_id,
+                    "group_id": config.group_id,
                     "is_default": config.is_default,
-                    **config_dict
+                    "version": config.version,
+                    "created_at": config.created_at,
+                    "updated_at": config.updated_at,
+                    "source": "group",
+                    "group_name": group_names_map[group_id]
                 })
 
                 if config.is_default and default_config is None:

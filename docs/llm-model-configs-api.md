@@ -192,15 +192,15 @@ The `model_type` field accepts the following values:
 | `config_id` | UUID | Configuration ID |
 | `name` | string | Configuration name |
 | `model_type` | string | Model type |
+| `config` | LLMModelConfigData | Configuration data (provider, base_url, model, temperature, etc.) |
+| `user_id` | UUID (nullable) | Owner user ID |
+| `group_id` | UUID (nullable) | Owner group ID |
+| `is_default` | boolean | Default flag |
+| `version` | integer | Optimistic locking version |
+| `created_at` | TIMESTAMP | Creation time |
+| `updated_at` | TIMESTAMP | Last update time |
 | `source` | string | Source: "user" or "group" |
 | `group_name` | string (nullable) | Group name if source is "group" |
-| `is_default` | boolean | Default flag |
-| `provider` | string | LLM provider |
-| `base_url` | string | API base URL |
-| `model` | string | Model name |
-| `temperature` | float | Temperature |
-| `api_key` | string (nullable) | API key |
-| `max_tokens` | integer (nullable) | Max tokens |
 
 ---
 
@@ -279,37 +279,55 @@ curl -X GET http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
       "config_id": "uuid-1",
       "name": "GPT-4",
       "model_type": "text",
-      "source": "user",
-      "group_name": null,
+      "config": {
+        "provider": "openai",
+        "base_url": "https://api.openai.com/v1",
+        "model": "gpt-4",
+        "temperature": 0.7,
+        "api_key": "sk-xxx"
+      },
+      "user_id": "uuid-user",
+      "group_id": null,
       "is_default": true,
-      "provider": "openai",
-      "model": "gpt-4",
-      "base_url": "https://api.openai.com/v1",
-      "temperature": 0.7,
-      "api_key": "sk-xxx"
+      "version": 0,
+      "created_at": "2026-03-03T14:32:48.158880Z",
+      "updated_at": "2026-03-03T14:32:48.158880Z",
+      "source": "user",
+      "group_name": null
     },
     {
       "config_id": "uuid-2",
       "name": "Claude-3",
       "model_type": "text",
-      "source": "group",
-      "group_name": "Developers",
+      "config": {
+        "provider": "anthropic",
+        "base_url": "https://api.anthropic.com",
+        "model": "claude-3-opus-20240229",
+        "temperature": 0.7,
+        "api_key": null
+      },
+      "user_id": null,
+      "group_id": "uuid-group",
       "is_default": true,
-      "provider": "anthropic",
-      "model": "claude-3-opus-20240229",
-      "base_url": "https://api.anthropic.com",
-      "temperature": 0.7,
-      "api_key": null
+      "version": 0,
+      "created_at": "2026-03-03T14:32:48.158880Z",
+      "updated_at": "2026-03-03T14:32:48.158880Z",
+      "source": "group",
+      "group_name": "Developers"
     }
   ],
   "default_config": {
     "config_id": "uuid-1",
     "name": "GPT-4",
     "model_type": "text",
-    "source": "user",
-    "group_name": null,
+    "config": {
+      "provider": "openai",
+      ...
+    },
+    "user_id": "uuid-user",
+    "group_id": null,
     "is_default": true,
-    "provider": "openai",
+    "version": 0,
     ...
   },
   "total": 2
@@ -317,10 +335,11 @@ curl -X GET http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
 ```
 
 **Note:**
-- User's own config shows `api_key: "sk-xxx"` (visible to owner)
-- Inherited group config shows `api_key: null` (hidden from users)
+- User's own config shows `config.api_key: "sk-xxx"` (visible to owner)
+- Inherited group config shows `config.api_key: null` (hidden from users)
 - `source: "user"` indicates the config belongs to the user
 - `source: "group"` indicates the config is inherited from a group
+- Configuration fields are nested in the `config` object (same structure as group endpoints)
 
 ### 4. Get group configurations
 
@@ -598,13 +617,19 @@ The API implements strict API key visibility controls to protect sensitive crede
   "configs": [
     {
       "config_id": "uuid-1",
+      "name": "GPT-4",
       "source": "user",
-      "api_key": "sk-xxx"  // Visible (own config)
+      "config": {
+        "api_key": "sk-xxx"  // Visible (own config)
+      }
     },
     {
       "config_id": "uuid-2",
+      "name": "Claude-3",
       "source": "group",
-      "api_key": null      // Hidden (inherited from group)
+      "config": {
+        "api_key": null      // Hidden (inherited from group)
+      }
     }
   ]
 }
@@ -614,8 +639,11 @@ The API implements strict API key visibility controls to protect sensitive crede
   "configs": [
     {
       "config_id": "uuid-1",
+      "name": "GPT-4",
       "source": "user",
-      "api_key": null      // Hidden (another user's config)
+      "config": {
+        "api_key": null      // Hidden (another user's config)
+      }
     }
   ]
 }

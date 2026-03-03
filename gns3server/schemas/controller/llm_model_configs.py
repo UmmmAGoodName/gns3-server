@@ -99,25 +99,21 @@ class LLMModelConfigResponse(DateTimeModelMixin):
     model_config = ConfigDict(from_attributes=True)
 
 
-class LLMModelConfigWithSource(BaseModel):
+class LLMModelConfigWithSource(DateTimeModelMixin):
     """Model configuration with source information (for inheritance)."""
 
     config_id: UUID
     name: str
     model_type: ModelType
+    config: LLMModelConfigData
+    user_id: Optional[UUID] = None
+    group_id: Optional[UUID] = None
+    is_default: bool
+    version: int
     source: str = Field(..., description="Source: 'user' or 'group'")
     group_name: Optional[str] = Field(None, description="Group name if source is 'group'")
-    is_default: bool
-    # Config fields
-    provider: str
-    base_url: str
-    model: str
-    temperature: float
-    api_key: Optional[str] = None
-    max_tokens: Optional[int] = None
 
-    # Allow extra config fields
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(from_attributes=True, extra="allow")
 
 
 class LLMModelConfigInheritedResponse(BaseModel):
