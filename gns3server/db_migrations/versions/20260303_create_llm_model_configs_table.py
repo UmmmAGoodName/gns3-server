@@ -1,7 +1,7 @@
 """create llm_model_configs table
 
 Revision ID: 20260303_create_llm_model_configs
-Revises: 7ceeddd9c9a8
+Revises: 98083573d011
 Create Date: 2026-03-03
 
 """
@@ -12,7 +12,7 @@ from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.
 revision = '20260303_create_llm_model_configs'
-down_revision = '7ceeddd9c9a8'
+down_revision = '98083573d011'
 branch_labels = None
 depends_on = None
 
