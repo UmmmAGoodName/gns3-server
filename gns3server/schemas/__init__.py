@@ -36,7 +36,8 @@ from .controller.llm_model_configs import (
     LLMModelConfigUpdate,
     LLMModelConfigResponse,
     LLMModelConfigWithSource,
-    LLMModelConfigInheritedResponse
+    LLMModelConfigInheritedResponse,
+    LLMModelConfigListResponse
 )
 from .controller.rbac import RoleCreate, RoleUpdate, Role, Privilege, ACECreate, ACEUpdate, ACE
 from .controller.pools import Resource, ResourceCreate, ResourcePoolCreate, ResourcePoolUpdate, ResourcePool

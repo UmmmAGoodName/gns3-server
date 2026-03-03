@@ -377,13 +377,13 @@ async def set_user_default_llm_model_config(
 
 @router.get(
     "/groups/{group_id}/llm-model-configs",
-    response_model=List[schemas.LLMModelConfigResponse],
+    response_model=schemas.LLMModelConfigListResponse,
     dependencies=[Depends(has_privilege("Group.Audit"))]
 )
 async def get_group_llm_model_configs(
         group_id: UUID,
         llm_repo: LLMModelConfigsRepository = Depends(get_repository(LLMModelConfigsRepository))
-) -> List[schemas.LLMModelConfigResponse]:
+) -> schemas.LLMModelConfigListResponse:
     """
     Get all LLM model configurations for a user group.
 
@@ -392,7 +392,7 @@ async def get_group_llm_model_configs(
 
     try:
         configs = await llm_repo.get_group_configs(group_id)
-        return [
+        config_responses = [
             schemas.LLMModelConfigResponse(
                 config_id=config.config_id,
                 name=config.name,
@@ -407,6 +407,23 @@ async def get_group_llm_model_configs(
             )
             for config in configs
         ]
+
+        # Find default config (same logic as user configs)
+        default_config = None
+        for config in config_responses:
+            if config.is_default:
+                default_config = config
+                break
+
+        # Fallback to first config if no default is marked
+        if default_config is None and config_responses:
+            default_config = config_responses[0]
+
+        return schemas.LLMModelConfigListResponse(
+            configs=config_responses,
+            default_config=default_config,
+            total=len(config_responses)
+        )
     except Exception as e:
         log.error(f"Failed to retrieve group LLM model configs: {e}")
         raise HTTPException(

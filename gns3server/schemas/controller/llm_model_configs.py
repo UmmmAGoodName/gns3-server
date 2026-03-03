@@ -126,3 +126,11 @@ class LLMModelConfigInheritedResponse(BaseModel):
     configs: list[LLMModelConfigWithSource]
     default_config: Optional[LLMModelConfigWithSource] = None
     total: int
+
+
+class LLMModelConfigListResponse(BaseModel):
+    """Response containing a list of model configurations with default."""
+
+    configs: list[LLMModelConfigResponse]
+    default_config: Optional[LLMModelConfigResponse] = None
+    total: int

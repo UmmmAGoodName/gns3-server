@@ -97,6 +97,8 @@ The `model_type` field accepts the following values:
 | DELETE | `/v3/access/groups/{group_id}/llm-model-configs/{config_id}` | Delete a configuration | Group.Modify |
 | PUT | `/v3/access/groups/{group_id}/llm-model-configs/default/{config_id}` | Set default configuration | Group.Modify |
 
+**Note:** The GET endpoints for groups return the same structure as user endpoints: `configs`, `default_config`, and `total`.
+
 ---
 
 ## Request/Response Schemas
@@ -168,6 +170,20 @@ The `model_type` field accepts the following values:
 1. User's config marked with `is_default: true`
 2. Group's config marked with `is_default: true` (if user has no default)
 3. First config in the list (fallback if no default is marked)
+
+### LLMModelConfigListResponse
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `configs` | list[LLMModelConfigResponse] | Configuration list |
+| `default_config` | LLMModelConfigResponse (nullable) | Default configuration (never null if configs list is not empty) |
+| `total` | integer | Total count |
+
+**Default Configuration Selection Logic:**
+1. Config marked with `is_default: true`
+2. First config in the list (fallback if no default is marked)
+
+**Usage:** This schema is used for group configuration endpoints (e.g., `GET /groups/{group_id}/llm-model-configs`).
 
 ### LLMModelConfigWithSource
 
@@ -306,7 +322,75 @@ curl -X GET http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
 - `source: "user"` indicates the config belongs to the user
 - `source: "group"` indicates the config is inherited from a group
 
-### 4. Update a configuration (without optimistic locking)
+### 4. Get group configurations
+
+```bash
+curl -X GET http://localhost:3080/v3/access/groups/{group_id}/llm-model-configs \
+  -H "Authorization: Bearer <token>"
+```
+
+**Response:**
+```json
+{
+  "configs": [
+    {
+      "config_id": "uuid-1",
+      "name": "Claude-3",
+      "model_type": "text",
+      "config": {
+        "provider": "anthropic",
+        "base_url": "https://api.anthropic.com",
+        "model": "claude-3-opus-20240229",
+        "temperature": 0.7,
+        "api_key": "sk-ant-xxx"
+      },
+      "user_id": null,
+      "group_id": "uuid-group",
+      "is_default": true,
+      "version": 0,
+      "created_at": "2026-03-03T12:00:00Z",
+      "updated_at": "2026-03-03T12:00:00Z"
+    },
+    {
+      "config_id": "uuid-2",
+      "name": "GPT-4",
+      "model_type": "text",
+      "config": {
+        "provider": "openai",
+        "base_url": "https://api.openai.com/v1",
+        "model": "gpt-4",
+        "temperature": 0.7,
+        "api_key": "sk-xxx"
+      },
+      "user_id": null,
+      "group_id": "uuid-group",
+      "is_default": false,
+      "version": 0,
+      "created_at": "2026-03-03T12:00:00Z",
+      "updated_at": "2026-03-03T12:00:00Z"
+    }
+  ],
+  "default_config": {
+    "config_id": "uuid-1",
+    "name": "Claude-3",
+    "model_type": "text",
+    "config": {
+      "provider": "anthropic",
+      ...
+    },
+    "user_id": null,
+    "group_id": "uuid-group",
+    "is_default": true,
+    "version": 0,
+    ...
+  },
+  "total": 2
+}
+```
+
+**Note:** The response structure is the same as user endpoints, with `configs`, `default_config`, and `total` fields.
+
+### 5. Update a configuration (without optimistic locking)
 
 ```bash
 curl -X PUT http://localhost:3080/v3/access/users/{user_id}/llm-model-configs/{config_id} \
@@ -318,7 +402,7 @@ curl -X PUT http://localhost:3080/v3/access/users/{user_id}/llm-model-configs/{c
   }'
 ```
 
-### 5. Update a configuration (WITH optimistic locking)
+### 6. Update a configuration (WITH optimistic locking)
 
 **Best practice for avoiding concurrent modification conflicts:**
 
@@ -357,14 +441,14 @@ HTTP 409 Conflict
 3. Apply your changes on top of the latest data
 4. Retry the update with the new `expected_version`
 
-### 6. Set default configuration
+### 7. Set default configuration
 
 ```bash
 curl -X PUT http://localhost:3080/v3/access/users/{user_id}/llm-model-configs/default/{config_id} \
   -H "Authorization: Bearer <token>"
 ```
 
-### 7. Get default configuration
+### 8. Get default configuration
 
 Get the user's default configuration:
 
@@ -421,7 +505,7 @@ The response format is the same as for users.
 - `/default` endpoint: Requires explicit `is_default: true` flag, returns 404 if not found
 - `default_config` field in list: Falls back to first config if no explicit default is marked
 
-### 8. Delete a configuration
+### 9. Delete a configuration
 
 ```bash
 curl -X DELETE http://localhost:3080/v3/access/users/{user_id}/llm-model-configs/{config_id} \
