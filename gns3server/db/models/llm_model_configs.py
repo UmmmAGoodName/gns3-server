@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from sqlalchemy import Column, Boolean, ForeignKey, CheckConstraint, UniqueConstraint, Index
+from sqlalchemy import Column, Boolean, ForeignKey, CheckConstraint, UniqueConstraint, Index, Integer
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -39,6 +39,7 @@ class LLMModelConfig(BaseTable):
     user_id = Column(GUID, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=True)
     group_id = Column(GUID, ForeignKey("user_groups.user_group_id", ondelete="CASCADE"), nullable=True)
     is_default = Column(Boolean, default=False, nullable=False)
+    version = Column(Integer, default=0, nullable=False)  # Optimistic locking version
 
     # Relationships
     user = relationship("User", backref="llm_model_configs")
@@ -69,4 +70,4 @@ class LLMModelConfig(BaseTable):
     def __repr__(self):
         config_name = self.config.get("name", "unnamed") if self.config else "unnamed"
         owner = f"user_{self.user_id}" if self.user_id else f"group_{self.group_id}"
-        return f"<LLMModelConfig {config_name} for {owner} (default={self.is_default})>"
+        return f"<LLMModelConfig {config_name} for {owner} (default={self.is_default}, version={self.version})>"

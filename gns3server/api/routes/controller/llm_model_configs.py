@@ -101,6 +101,7 @@ async def get_user_own_llm_model_configs(
                 user_id=config.user_id,
                 group_id=config.group_id,
                 is_default=config.is_default,
+                version=config.version,
                 created_at=config.created_at,
                 updated_at=config.updated_at
             )
@@ -151,6 +152,7 @@ async def create_user_llm_model_config(
             user_id=new_config.user_id,
             group_id=new_config.group_id,
             is_default=new_config.is_default,
+            version=new_config.version,
             created_at=new_config.created_at,
             updated_at=new_config.updated_at
         )
@@ -177,6 +179,7 @@ async def update_user_llm_model_config(
 ) -> schemas.LLMModelConfigResponse:
     """
     Update a user's LLM model configuration.
+    Supports optimistic locking via expected_version field.
 
     Required privilege: User.Modify
     """
@@ -185,7 +188,15 @@ async def update_user_llm_model_config(
         # Build updates dict with only non-None values
         updates = {k: v for k, v in config_update.model_dump().items() if v is not None}
 
-        updated_config = await llm_repo.update_user_config(config_id, user_id, updates)
+        # Extract expected_version for optimistic locking
+        expected_version = updates.pop("expected_version", None)
+
+        updated_config = await llm_repo.update_user_config(
+            config_id,
+            user_id,
+            updates,
+            expected_version=expected_version
+        )
 
         if not updated_config:
             raise HTTPException(
@@ -199,11 +210,20 @@ async def update_user_llm_model_config(
             user_id=updated_config.user_id,
             group_id=updated_config.group_id,
             is_default=updated_config.is_default,
+            version=updated_config.version,
             created_at=updated_config.created_at,
             updated_at=updated_config.updated_at
         )
     except HTTPException:
         raise
+    except ValueError as e:
+        # Handle optimistic lock errors
+        if "Concurrent modification" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(e)
+            )
+        raise ControllerBadRequestError(str(e))
     except Exception as e:
         log.error(f"Failed to update LLM model config: {e}")
         raise HTTPException(
@@ -277,6 +297,7 @@ async def set_user_default_llm_model_config(
             user_id=config.user_id,
             group_id=config.group_id,
             is_default=config.is_default,
+            version=config.version,
             created_at=config.created_at,
             updated_at=config.updated_at
         )
@@ -318,6 +339,7 @@ async def get_group_llm_model_configs(
                 user_id=config.user_id,
                 group_id=config.group_id,
                 is_default=config.is_default,
+                version=config.version,
                 created_at=config.created_at,
                 updated_at=config.updated_at
             )
@@ -368,6 +390,7 @@ async def create_group_llm_model_config(
             user_id=new_config.user_id,
             group_id=new_config.group_id,
             is_default=new_config.is_default,
+            version=new_config.version,
             created_at=new_config.created_at,
             updated_at=new_config.updated_at
         )
@@ -394,6 +417,7 @@ async def update_group_llm_model_config(
 ) -> schemas.LLMModelConfigResponse:
     """
     Update a group's LLM model configuration.
+    Supports optimistic locking via expected_version field.
 
     Required privilege: Group.Modify
     """
@@ -402,7 +426,15 @@ async def update_group_llm_model_config(
         # Build updates dict with only non-None values
         updates = {k: v for k, v in config_update.model_dump().items() if v is not None}
 
-        updated_config = await llm_repo.update_group_config(config_id, group_id, updates)
+        # Extract expected_version for optimistic locking
+        expected_version = updates.pop("expected_version", None)
+
+        updated_config = await llm_repo.update_group_config(
+            config_id,
+            group_id,
+            updates,
+            expected_version=expected_version
+        )
 
         if not updated_config:
             raise HTTPException(
@@ -416,11 +448,20 @@ async def update_group_llm_model_config(
             user_id=updated_config.user_id,
             group_id=updated_config.group_id,
             is_default=updated_config.is_default,
+            version=updated_config.version,
             created_at=updated_config.created_at,
             updated_at=updated_config.updated_at
         )
     except HTTPException:
         raise
+    except ValueError as e:
+        # Handle optimistic lock errors
+        if "Concurrent modification" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(e)
+            )
+        raise ControllerBadRequestError(str(e))
     except Exception as e:
         log.error(f"Failed to update LLM model config: {e}")
         raise HTTPException(
@@ -494,6 +535,7 @@ async def set_group_default_llm_model_config(
             user_id=config.user_id,
             group_id=config.group_id,
             is_default=config.is_default,
+            version=config.version,
             created_at=config.created_at,
             updated_at=config.updated_at
         )

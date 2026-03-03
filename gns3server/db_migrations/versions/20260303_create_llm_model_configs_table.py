@@ -37,6 +37,7 @@ def upgrade() -> None:
         sa.Column('user_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.user_id', ondelete='CASCADE'), nullable=True),
         sa.Column('group_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('user_groups.user_group_id', ondelete='CASCADE'), nullable=True),
         sa.Column('is_default', sa.Boolean(), default=False, nullable=False),
+        sa.Column('version', sa.Integer(), nullable=False, server_default='0'),
         sa.Column('created_at', sa.DateTime(), nullable=True),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
         sa.CheckConstraint(

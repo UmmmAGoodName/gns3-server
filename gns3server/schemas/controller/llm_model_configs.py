@@ -58,6 +58,7 @@ class LLMModelConfigUpdate(BaseModel):
     api_key: Optional[str] = None
     max_tokens: Optional[int] = Field(None, gt=0)
     is_default: Optional[bool] = None
+    expected_version: Optional[int] = Field(None, description="Expected version for optimistic locking")
 
     # Allow extra fields for extensibility
     model_config = ConfigDict(extra="allow")
@@ -72,6 +73,7 @@ class LLMModelConfigResponse(DateTimeModelMixin):
     user_id: Optional[UUID] = None
     group_id: Optional[UUID] = None
     is_default: bool
+    version: int = Field(..., description="Optimistic locking version")
 
     model_config = ConfigDict(from_attributes=True)
 

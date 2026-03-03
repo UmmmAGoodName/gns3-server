@@ -96,9 +96,19 @@ class LLMModelConfigsRepository(BaseRepository):
         self,
         config_id: UUID,
         user_id: UUID,
-        updates: Dict[str, Any]
+        updates: Dict[str, Any],
+        expected_version: Optional[int] = None
     ) -> Optional[models.LLMModelConfig]:
-        """Update a user's LLM model configuration."""
+        """
+        Update a user's LLM model configuration.
+        Uses optimistic locking to prevent concurrent modifications.
+
+        :param config_id: Configuration ID
+        :param user_id: User ID
+        :param updates: Dictionary of fields to update
+        :param expected_version: Expected version for optimistic locking (raises error if mismatch)
+        :raises ValueError: If version mismatch (concurrent modification)
+        """
         query = select(models.LLMModelConfig).where(
             and_(
                 models.LLMModelConfig.config_id == config_id,
@@ -110,6 +120,13 @@ class LLMModelConfigsRepository(BaseRepository):
 
         if not db_config:
             return None
+
+        # Check optimistic lock if expected_version is provided
+        if expected_version is not None and db_config.version != expected_version:
+            raise ValueError(
+                f"Concurrent modification detected. Expected version {expected_version}, "
+                f"but current version is {db_config.version}. Please retry."
+            )
 
         # Encrypt API key if present in updates
         from gns3server.utils.encryption import encrypt
@@ -130,6 +147,8 @@ class LLMModelConfigsRepository(BaseRepository):
                 current_config[key] = value
 
         db_config.config = current_config
+        # Increment version for optimistic locking
+        db_config.version = db_config.version + 1
         await self._db_session.commit()
         await self._db_session.refresh(db_config)
         return db_config
@@ -234,9 +253,19 @@ class LLMModelConfigsRepository(BaseRepository):
         self,
         config_id: UUID,
         group_id: UUID,
-        updates: Dict[str, Any]
+        updates: Dict[str, Any],
+        expected_version: Optional[int] = None
     ) -> Optional[models.LLMModelConfig]:
-        """Update a group's LLM model configuration."""
+        """
+        Update a group's LLM model configuration.
+        Uses optimistic locking to prevent concurrent modifications.
+
+        :param config_id: Configuration ID
+        :param group_id: Group ID
+        :param updates: Dictionary of fields to update
+        :param expected_version: Expected version for optimistic locking (raises error if mismatch)
+        :raises ValueError: If version mismatch (concurrent modification)
+        """
         query = select(models.LLMModelConfig).where(
             and_(
                 models.LLMModelConfig.config_id == config_id,
@@ -248,6 +277,13 @@ class LLMModelConfigsRepository(BaseRepository):
 
         if not db_config:
             return None
+
+        # Check optimistic lock if expected_version is provided
+        if expected_version is not None and db_config.version != expected_version:
+            raise ValueError(
+                f"Concurrent modification detected. Expected version {expected_version}, "
+                f"but current version is {db_config.version}. Please retry."
+            )
 
         # Encrypt API key if present in updates
         from gns3server.utils.encryption import encrypt
@@ -268,6 +304,8 @@ class LLMModelConfigsRepository(BaseRepository):
                 current_config[key] = value
 
         db_config.config = current_config
+        # Increment version for optimistic locking
+        db_config.version = db_config.version + 1
         await self._db_session.commit()
         await self._db_session.refresh(db_config)
         return db_config
