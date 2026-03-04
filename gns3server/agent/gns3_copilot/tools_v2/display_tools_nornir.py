@@ -9,7 +9,7 @@ import os
 import re
 from typing import Any
 
-from gns3_copilot.gns3_client import get_gns3_server_host
+from gns3server.agent.gns3_copilot.gns3_client import get_gns3_server_host
 
 from langchain.tools import BaseTool
 from langchain_core.callbacks import CallbackManagerForToolRun
@@ -19,7 +19,7 @@ from nornir.core import Nornir
 from nornir.core.task import AggregatedResult, Result, Task
 from nornir_netmiko.tasks import netmiko_multiline
 
-from gns3_copilot.utils import get_device_ports_from_topology
+from gns3server.agent.gns3_copilot.utils import get_device_ports_from_topology
 
 # config log
 logger = logging.getLogger(__name__)

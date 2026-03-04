@@ -34,7 +34,7 @@ def get_device_ports_from_topology(
 
     try:
         # Lazy import to avoid circular dependency
-        from gns3_copilot.gns3_client import GNS3TopologyTool
+        from gns3server.agent.gns3_copilot.gns3_client import GNS3TopologyTool
 
         # Get topology information
         topo = GNS3TopologyTool()

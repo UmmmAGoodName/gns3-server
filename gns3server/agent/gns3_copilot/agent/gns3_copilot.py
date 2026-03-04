@@ -43,17 +43,17 @@ from typing_extensions import TypedDict
 
 import logging
 
-from gns3_copilot.agent.model_factory import (
+from gns3server.agent.gns3_copilot.agent.model_factory import (
     create_base_model_with_tools,
     create_title_model,
 )
-from gns3_copilot.gns3_client import GNS3TopologyTool
-from gns3_copilot.prompts import TITLE_PROMPT, load_system_prompt
+from gns3server.agent.gns3_copilot.gns3_client import GNS3TopologyTool
+from gns3server.agent.gns3_copilot.prompts import TITLE_PROMPT, load_system_prompt
 import sys
 from pathlib import Path
 # Add backend to path for prompt_manager
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "backend"))
-from gns3_copilot.tools_v2 import (
+from gns3server.agent.gns3_copilot.tools_v2 import (
     ExecuteMultipleDeviceCommands,
     GNS3CreateNodeTool,
     GNS3LinkTool,

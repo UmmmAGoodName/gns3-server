@@ -12,7 +12,7 @@ from uuid import UUID
 
 from langchain.chat_models import init_chat_model
 
-from gns3_copilot.gns3_client import get_llm_config
+from gns3server.agent.gns3_copilot.gns3_client import get_llm_config
 
 logger = logging.getLogger(__name__)
 

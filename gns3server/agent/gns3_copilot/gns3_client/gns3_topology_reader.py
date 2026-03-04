@@ -9,7 +9,7 @@ from typing import Any
 
 from langchain.tools import BaseTool
 
-from gns3_copilot.gns3_client import Project, get_gns3_connector
+from gns3server.agent.gns3_copilot.gns3_client import Project, get_gns3_connector
 
 # Configure logging
 logger = logging.getLogger(__name__)

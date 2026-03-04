@@ -15,8 +15,8 @@ from langchain.tools import BaseTool
 from langchain_core.callbacks import CallbackManagerForToolRun
 from telnetlib3 import Telnet
 
-from gns3_copilot.gns3_client import get_gns3_server_host
-from gns3_copilot.utils import get_device_ports_from_topology
+from gns3server.agent.gns3_copilot.gns3_client import get_gns3_server_host
+from gns3server.agent.gns3_copilot.utils import get_device_ports_from_topology
 
 logger = logging.getLogger(__name__)
 

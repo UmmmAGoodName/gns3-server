@@ -11,7 +11,7 @@ This allows the copilot module to access API keys that are hidden from API respo
 while leveraging the API's default_config selection logic.
 
 Usage:
-    from gns3_copilot.utils.llm_config_helper import get_user_llm_config
+    from gns3server.agent.gns3_copilot.utils.llm_config_helper import get_user_llm_config
 
     # Get user's default LLM config (with API key)
     config = get_user_llm_config(user_id, jwt_token, gns3_url)
@@ -232,7 +232,7 @@ def _detect_gns3_url() -> Optional[str]:
         GNS3 server URL, or None if detection failed
     """
     try:
-        from gns3_copilot.gns3_client.connector_factory import (
+        from gns3server.agent.gns3_copilot.gns3_client.connector_factory import (
             _get_url_from_controller,
             _get_url_from_config,
             DEFAULT_GNS3_URL

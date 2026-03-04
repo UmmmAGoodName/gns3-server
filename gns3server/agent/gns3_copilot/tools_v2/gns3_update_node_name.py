@@ -12,7 +12,7 @@ from typing import Any
 from langchain.tools import BaseTool
 from langchain_core.callbacks import CallbackManagerForToolRun
 
-from gns3_copilot.gns3_client import Node, get_gns3_connector
+from gns3server.agent.gns3_copilot.gns3_client import Node, get_gns3_connector
 
 # Configure logging
 logger = logging.getLogger(__name__)

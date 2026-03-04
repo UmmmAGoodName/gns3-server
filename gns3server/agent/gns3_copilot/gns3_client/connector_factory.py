@@ -14,7 +14,7 @@ Main Functions:
     get_gns3_connector: Create a Gns3Connector with JWT token
 
 Example:
-    from gns3_copilot.gns3_client import get_gns3_connector
+    from gns3server.agent.gns3_copilot.gns3_client import get_gns3_connector
 
     # Auto-detect URL from Controller or Config
     connector = get_gns3_connector(jwt_token="your_token")
@@ -29,7 +29,7 @@ Authentication:
 import logging
 from typing import Optional
 
-from gns3_copilot.gns3_client.custom_gns3fy import Gns3Connector
+from gns3server.agent.gns3_copilot.gns3_client.custom_gns3fy import Gns3Connector
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +241,7 @@ async def get_gns3_connector_with_llm_config(
             url = _detect_url_for_api()
 
         # Step 3: Get LLM config
-        from gns3_copilot.utils.llm_config_helper import get_user_llm_config
+        from gns3server.agent.gns3_copilot.utils.llm_config_helper import get_user_llm_config
 
         llm_config = await get_user_llm_config(
             user_id=user_id,
@@ -316,7 +316,7 @@ def get_gns3_server_host() -> str:
         Hostname/IP address string
 
     Example:
-        from gns3_copilot.gns3_client import get_gns3_server_host
+        from gns3server.agent.gns3_copilot.gns3_client import get_gns3_server_host
 
         host = get_gns3_server_host()
         print(f"GNS3 server host: {host}")
@@ -353,7 +353,7 @@ def get_llm_config(user_id, jwt_token: str) -> Optional[dict]:
         or None if not found.
 
     Example:
-        from gns3_copilot.gns3_client import get_llm_config
+        from gns3server.agent.gns3_copilot.gns3_client import get_llm_config
 
         config = get_llm_config(user_id, jwt_token)
         if config:
@@ -372,7 +372,7 @@ def get_llm_config(user_id, jwt_token: str) -> Optional[dict]:
         url = _detect_url_for_api()
 
         # Import the async helper
-        from gns3_copilot.utils.llm_config_helper import get_user_llm_config
+        from gns3server.agent.gns3_copilot.utils.llm_config_helper import get_user_llm_config
 
         # Run async function in sync context
         loop = asyncio.get_event_loop()

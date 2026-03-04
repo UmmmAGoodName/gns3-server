@@ -16,7 +16,7 @@ import aiosqlite
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
-from gns3_copilot.agent.gns3_copilot import agent_builder
+from gns3server.agent.gns3_copilot.agent.gns3_copilot import agent_builder
 
 log = logging.getLogger(__name__)
 

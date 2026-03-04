@@ -21,7 +21,7 @@ API routes for GNS3 Copilot Chat integration.
 import json
 import logging
 import uuid
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse

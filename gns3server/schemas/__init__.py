@@ -39,6 +39,14 @@ from .controller.llm_model_configs import (
     LLMModelConfigInheritedResponse,
     LLMModelConfigListResponse
 )
+from .controller.chat import (
+    OpenAIToolCall,
+    ChatRequest,
+    ChatResponse,
+    OpenAIMessage,
+    ConversationHistory,
+    ChatSession
+)
 from .controller.rbac import RoleCreate, RoleUpdate, Role, Privilege, ACECreate, ACEUpdate, ACE
 from .controller.pools import Resource, ResourceCreate, ResourcePoolCreate, ResourcePoolUpdate, ResourcePool
 from .controller.tokens import Token
