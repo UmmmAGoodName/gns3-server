@@ -16,19 +16,22 @@
 
 """
 API routes for GNS3 Copilot Chat integration.
+
+Nested under projects: /v3/projects/{project_id}/chat/...
 """
 
 import json
 import logging
 import uuid
-from typing import Optional, List
+from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from uuid import UUID
 
 from gns3server import schemas
 from gns3server.controller import Controller
+from gns3server.controller.project import Project
 from gns3server.controller.controller_error import ControllerNotFoundError
 from gns3server.agent.gns3_copilot.project_agent_manager import get_project_agent_manager
 
@@ -41,9 +44,18 @@ responses = {404: {"model": schemas.ErrorMessage, "description": "Resource not f
 router = APIRouter(responses=responses)
 
 
-async def dep_project(project_id: UUID):
+def dep_project(project_id: UUID) -> Project:
     """
     Dependency to retrieve a project.
+
+    Args:
+        project_id: GNS3 project ID
+
+    Returns:
+        Project instance
+
+    Raises:
+        ControllerNotFoundError: If project not found
     """
     controller = Controller.instance()
     project = controller.get_project(str(project_id))
@@ -61,6 +73,7 @@ async def dep_project(project_id: UUID):
 async def stream_chat(
     request: schemas.ChatRequest,
     http_request: Request,
+    project: Project = Depends(dep_project),
     current_user: schemas.User = Depends(get_current_active_user),
 ) -> StreamingResponse:
     """
@@ -71,21 +84,6 @@ async def stream_chat(
     the message kind (content, tool_call, tool_start, tool_end, error, done, heartbeat).
     """
 
-    # Validate project exists and get path
-    try:
-        controller = Controller.instance()
-        project = controller.get_project(str(request.project_id))
-        if not project:
-            raise ControllerNotFoundError(f"Project '{request.project_id}' not found")
-        project_path = project.path
-    except ControllerNotFoundError:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid project: {e}"
-        )
-
     # Get user authentication info
     user_id = str(current_user.user_id)
 
@@ -95,7 +93,7 @@ async def stream_chat(
 
     # Get or create AgentService for this project
     agent_manager = await get_project_agent_manager()
-    agent_service = await agent_manager.get_agent(str(request.project_id), project_path)
+    agent_service = await agent_manager.get_agent(str(project.id), project.path)
 
     # Generate session_id if not provided
     session_id = request.session_id or str(uuid.uuid4())
@@ -106,7 +104,7 @@ async def stream_chat(
             async for chunk in agent_service.stream_chat(
                 message=request.message,
                 session_id=session_id,
-                project_id=str(request.project_id),
+                project_id=str(project.id),
                 user_id=user_id,
                 jwt_token=jwt_token,
                 mode=request.mode
@@ -139,54 +137,13 @@ async def stream_chat(
 
 
 @router.get(
-    "/history/{session_id}",
-    response_model=schemas.ConversationHistory,
-    summary="Get conversation history",
-    description="Retrieve the conversation history for a specific session/thread."
-)
-async def get_history(
-    session_id: str,
-    project_id: UUID,
-    limit: int = 100,
-    current_user: schemas.User = Depends(get_current_active_user),
-) -> schemas.ConversationHistory:
-    """
-    Get conversation history for a session.
-    """
-
-    # Validate project exists
-    try:
-        controller = Controller.instance()
-        project = controller.get_project(str(project_id))
-        if not project:
-            raise ControllerNotFoundError(f"Project '{project_id}' not found")
-        project_path = project.path
-    except ControllerNotFoundError:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid project: {e}"
-        )
-
-    # Get AgentService for this project
-    agent_manager = await get_project_agent_manager()
-    agent_service = await agent_manager.get_agent(str(project_id), project_path)
-
-    # Get history
-    history = await agent_service.get_history(session_id, limit)
-
-    return schemas.ConversationHistory(**history)
-
-
-@router.get(
     "/sessions",
     response_model=List[schemas.ChatSession],
     summary="List chat sessions",
     description="List all chat sessions for a project (not yet implemented)."
 )
 async def list_sessions(
-    project_id: UUID = Query(..., description="GNS3 project ID"),
+    project: Project = Depends(dep_project),
     current_user: schemas.User = Depends(get_current_active_user),
 ) -> list[schemas.ChatSession]:
     """
@@ -199,6 +156,32 @@ async def list_sessions(
     return []
 
 
+@router.get(
+    "/sessions/{session_id}/history",
+    response_model=schemas.ConversationHistory,
+    summary="Get conversation history",
+    description="Retrieve the conversation history for a specific session/thread."
+)
+async def get_history(
+    session_id: str,
+    project: Project = Depends(dep_project),
+    limit: int = 100,
+    current_user: schemas.User = Depends(get_current_active_user),
+) -> schemas.ConversationHistory:
+    """
+    Get conversation history for a session.
+    """
+
+    # Get AgentService for this project
+    agent_manager = await get_project_agent_manager()
+    agent_service = await agent_manager.get_agent(str(project.id), project.path)
+
+    # Get history
+    history = await agent_service.get_history(session_id, limit)
+
+    return schemas.ConversationHistory(**history)
+
+
 @router.delete(
     "/sessions/{session_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -207,7 +190,7 @@ async def list_sessions(
 )
 async def delete_session(
     session_id: str,
-    project_id: UUID,
+    project: Project = Depends(dep_project),
     current_user: schemas.User = Depends(get_current_active_user),
 ):
     """

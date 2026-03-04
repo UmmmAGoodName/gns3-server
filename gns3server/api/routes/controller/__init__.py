@@ -156,6 +156,6 @@ router.include_router(
 
 router.include_router(
     chat.router,
-    prefix="/chat",
+    prefix="/projects/{project_id}/chat",
     tags=["Chat"]
 )

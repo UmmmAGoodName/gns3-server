@@ -35,7 +35,6 @@ class ChatRequest(BaseModel):
 
     message: str = Field(..., description="User message content")
     session_id: Optional[str] = Field(None, description="Session ID (auto-generated if not provided)")
-    project_id: str = Field(..., description="GNS3 project ID")
     stream: bool = Field(default=True, description="Enable streaming response")
     temperature: Optional[float] = Field(None, description="LLM temperature parameter")
     mode: Literal["text"] = Field(default="text", description="Interaction mode")
