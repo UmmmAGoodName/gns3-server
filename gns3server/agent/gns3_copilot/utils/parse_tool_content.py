@@ -14,6 +14,28 @@ Supported formats:
 - Error message strings
 - Plain text output
 
+Standard Tool Response Format:
+    All tools should follow this standardized format for consistency:
+
+    {
+        "success": bool,           # Whether the overall operation succeeded
+        "total": int,              # Total number of items processed
+        "successful": int,         # Number of successful operations
+        "failed": int,             # Number of failed operations
+        "data": list[dict],       # Detailed results (one entry per item)
+        "error": str,             # Global error message (if operation failed entirely)
+        "metadata": dict          # Optional metadata (timestamp, execution_time, etc.)
+    }
+
+    Single item format (for data array items):
+    {
+        "id": str,                 # Device/node/link ID
+        "name": str,               # Human-readable name
+        "status": "success" | "failed",  # Item status
+        "result": str,             # Success result or output
+        "error": str               # Error message (if failed)
+    }
+
 Author: Guobin Yue
 """
 
@@ -230,6 +252,185 @@ def format_tool_response(
         result = json.dumps({"error": str(e)}, ensure_ascii=False, indent=indent)
         logger.info("format_tool_response returning error: %s", result)
         return result
+
+
+def normalize_tool_response(
+    response: dict | list | str,
+    tool_name: str = "unknown"
+) -> dict:
+    """
+    Normalize tool response to standard format for consistent frontend display.
+
+    This function converts various tool response formats into a standardized structure
+    that frontend code can rely on. It handles both legacy formats and new formats,
+    ensuring backward compatibility.
+
+    Args:
+        response: Raw tool response (dict, list, or string)
+        tool_name: Name of the tool (for error messages)
+
+    Returns:
+        dict: Normalized response in standard format:
+            {
+                "success": bool,
+                "total": int,
+                "successful": int,
+                "failed": int,
+                "data": list[dict],
+                "error": str (optional),
+                "metadata": dict
+            }
+
+    Examples:
+        >>> normalize_tool_response({"status": "success", "output": "OK"})
+        {'success': True, 'total': 1, 'successful': 1, 'failed': 0, 'data': [{'status': 'success', 'result': 'OK'}], 'metadata': {}}
+
+        >>> normalize_tool_response([{"device_name": "R1", "status": "success"}])
+        {'success': True, 'total': 1, 'successful': 1, 'failed': 0, 'data': [...], 'metadata': {}}
+    """
+    from datetime import datetime
+
+    metadata = {
+        "tool_name": tool_name,
+        "normalized_at": datetime.utcnow().isoformat()
+    }
+
+    # Handle error responses
+    if isinstance(response, dict) and "error" in response and len(response) == 1:
+        return {
+            "success": False,
+            "total": 0,
+            "successful": 0,
+            "failed": 0,
+            "data": [],
+            "error": str(response["error"]),
+            "metadata": metadata
+        }
+
+    # Handle empty responses
+    if not response:
+        return {
+            "success": True,
+            "total": 0,
+            "successful": 0,
+            "failed": 0,
+            "data": [],
+            "metadata": metadata
+        }
+
+    # Handle list responses (most tools return list of device results)
+    if isinstance(response, list):
+        successful = sum(1 for item in response if isinstance(item, dict) and item.get("status") == "success")
+        failed = len(response) - successful
+
+        normalized_data = []
+        for item in response:
+            if isinstance(item, dict):
+                normalized_item = {
+                    "id": item.get("device_id") or item.get("node_id") or item.get("id") or "",
+                    "name": item.get("device_name") or item.get("name") or "",
+                    "status": item.get("status", "unknown"),
+                }
+                if normalized_item["status"] == "success":
+                    normalized_item["result"] = item.get("output") or item.get("result") or ""
+                else:
+                    normalized_item["error"] = item.get("error") or item.get("output") or "Unknown error"
+                normalized_data.append(normalized_item)
+            else:
+                # Non-dict items in list
+                normalized_data.append({
+                    "id": "",
+                    "name": "",
+                    "status": "unknown",
+                    "result": str(item)
+                })
+
+        return {
+            "success": failed == 0,
+            "total": len(response),
+            "successful": successful,
+            "failed": failed,
+            "data": normalized_data,
+            "metadata": metadata
+        }
+
+    # Handle dict responses (some tools return summary + results)
+    if isinstance(response, dict):
+        # Check if already in standard format
+        if "success" in response and "data" in response:
+            return {
+                "success": response.get("success", True),
+                "total": response.get("total", len(response.get("data", []))),
+                "successful": response.get("successful", 0),
+                "failed": response.get("failed", 0),
+                "data": response.get("data", []),
+                "error": response.get("error"),
+                "metadata": {**metadata, **response.get("metadata", {})}
+            }
+
+        # Legacy format: extract common fields
+        total = response.get("total_nodes") or response.get("total") or response.get("count", 1)
+        successful = response.get("successful_nodes") or response.get("successful") or 0
+        failed = response.get("failed_nodes") or response.get("failed") or 0
+
+        # Extract data from various possible locations
+        data = []
+        if "nodes" in response:
+            data = response["nodes"]
+        elif "results" in response:
+            data = response["results"]
+        elif "data" in response:
+            data = response["data"]
+        elif "output" in response:
+            # Single device response
+            data = [{
+                "name": response.get("device_name", ""),
+                "status": response.get("status", "success"),
+                "result": response["output"]
+            }]
+
+        # If no data found but have status, create single item
+        if not data and "status" in response:
+            data = [{
+                "name": response.get("device_name") or response.get("name") or "",
+                "status": response["status"],
+                "result": response.get("output") or response.get("result") or "",
+                "error": response.get("error") or ""
+            }]
+
+        # Recursively normalize data items
+        if data and isinstance(data, list):
+            return normalize_tool_response(data, tool_name)
+        else:
+            # No data array, return empty but preserve counts
+            return {
+                "success": failed == 0,
+                "total": total,
+                "successful": successful,
+                "failed": failed,
+                "data": [],
+                "metadata": metadata
+            }
+
+    # Handle string responses (parse first)
+    if isinstance(response, str):
+        parsed = parse_tool_content(response, fallback_to_raw=True)
+        return normalize_tool_response(parsed, tool_name)
+
+    # Fallback for unknown types
+    return {
+        "success": True,
+        "total": 1,
+        "successful": 1,
+        "failed": 0,
+        "data": [{
+            "id": "",
+            "name": "",
+            "status": "unknown",
+            "result": str(response)
+        }],
+        "metadata": metadata
+    }
 
 
 # Test function to verify the implementation

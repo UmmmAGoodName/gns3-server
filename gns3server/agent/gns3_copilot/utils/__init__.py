@@ -13,7 +13,11 @@ Author: Guobin Yue
 
 # Import main utility functions
 from .get_gns3_device_port import get_device_ports_from_topology
-from .parse_tool_content import format_tool_response, parse_tool_content
+from .parse_tool_content import (
+    format_tool_response,
+    normalize_tool_response,
+    parse_tool_content
+)
 
 # Dynamic version management
 try:
@@ -33,4 +37,5 @@ __all__ = [
     "get_device_ports_from_topology",
     "parse_tool_content",
     "format_tool_response",
+    "normalize_tool_response",
 ]
