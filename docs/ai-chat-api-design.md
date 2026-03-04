@@ -139,13 +139,46 @@ GNS3 Copilot Agent 需要以下信息才能正常工作：
 
 ### 统计信息自动收集
 
-在 `stream_chat` 流程中自动追踪：
-- 每次用户消息：message_count +1
-- 每次 AI 响应：message_count +1
-- 每次工具调用：llm_calls_count +1
-- LLM 返回的 token 使用量：实时累加
+统计信息在对话过程中实时收集，流结束后一次性更新到 `chat_sessions` 表。
 
-流结束后一次性更新到数据库。
+**实现位置**：`agent_service.py` 的 `stream_chat` 方法
+
+**统计逻辑**：
+
+1. **message_count（消息数量）**
+   - 初始值：1（用户消息）
+   - `on_chat_model_end` 事件：+1（AI 完整回复，不是每个 chunk）
+   - `on_tool_end` 事件：+1（每个工具执行结果）
+
+2. **llm_calls_count（LLM 调用次数）**
+   - 监听 `on_chat_model_start` 事件
+   - 每次 LLM 开始生成时 +1
+
+3. **input_tokens（输入 token）**
+   - 从 `on_chat_model_end` 事件的 `usage_metadata` 中提取
+   - **重要**：LangGraph 返回的 input_tokens 已包含对话历史，每次 LLM 调用都会累加之前的对话内容
+   - 示例：第1次 input=8674，第2次 input=9421（包含第1次对话 8674+675+系统提示词增量）
+
+4. **output_tokens（输出 token）**
+   - 从 `on_chat_model_end` 事件的 `usage_metadata` 中提取
+   - **重要**：LangGraph 返回的 output_tokens 也是累加值，包含所有 LLM 调用的输出
+   - 示例：第1次实际输出=675，第2次实际输出=9，累加后 output=684（675+9）
+
+5. **total_tokens（总 token）**
+   - 计算公式：input_tokens + output_tokens
+   - 取最后一次 LLM 调用的累加值进行计算
+
+**统计示例**（真实数据）：
+- 第1次 LLM 调用（AI 回复）：input=8674, output=675
+- 第2次 LLM 调用（生成标题）：input=9421, output=684（累加值：675+9）
+- 最终存储：input_tokens=9421, output_tokens=684, total_tokens=10105
+- 说明：LangGraph 已自动累加，代码直接取最后一次值即可
+
+**注意事项**：
+- message_count 统计的是**完整消息**，不是流式 chunks
+- Token 数据依赖 LLM 返回的 `usage_metadata`，某些模型可能不支持
+- 统计数据在流结束后通过 `update_session` 方法增量更新到数据库
+- LangGraph 已自动处理 input 和 output 的历史累加，代码使用最后一次 LLM 调用的值
 
 ### Title 自动同步
 
@@ -279,21 +312,30 @@ Chat API 使用 Server-Sent Events (SSE) 进行流式传输。
 
 ### ChatSession
 
-- id: Optional[int] - 数据库 ID
-- thread_id: str - Thread/Session ID
-- user_id: str - 用户 ID
-- project_id: str - 项目 ID
-- title: str - 会话标题
-- message_count: int - 消息数量
-- llm_calls_count: int - LLM 调用次数
-- input_tokens: int - 输入 token 数
-- output_tokens: int - 输出 token 数
-- total_tokens: int - 总 token 数
-- last_message_at: Optional[str] - 最后消息时间
-- created_at: Optional[str] - 创建时间
-- updated_at: Optional[str] - 更新时间
-- metadata: Dict - 预留元数据
-- stats: Dict - 额外统计信息
+会话模型，存储会话元数据和统计信息。
+
+**基础字段**：
+- id: 数据库自增 ID
+- thread_id: LangGraph thread_id（会话唯一标识）
+- user_id: 用户 ID
+- project_id: GNS3 项目 ID
+- title: 会话标题（自动生成或用户修改）
+
+**统计字段**：
+- message_count: 完整消息数量（用户消息 + AI 回复 + 工具结果）
+- llm_calls_count: LLM 总调用次数
+- input_tokens: 输入 token 总数（累加所有 LLM 调用）
+- output_tokens: 输出 token 总数（累加所有 LLM 调用）
+- total_tokens: 总 token 数（input_tokens + output_tokens）
+
+**时间字段**：
+- last_message_at: 最后一条消息的时间戳
+- created_at: 会话创建时间
+- updated_at: 会话最后更新时间
+
+**预留字段**：
+- metadata: 元数据 JSON 字符串（存储 mode、status、tags 等）
+- stats: 额外统计 JSON 字符串（存储工具调用次数等）
 
 ### ConversationHistory
 
@@ -329,18 +371,26 @@ Chat API 使用 Server-Sent Events (SSE) 进行流式传输。
 - `close`：关闭数据库连接
 
 **核心流程**（stream_chat）：
-1. 获取或创建会话
-2. 设置 ContextVars（JWT token、LLM config）
-3. 构建 LangGraph config
-4. 流式执行 Agent，收集统计信息
-5. 流结束后更新会话统计
-6. 同步 auto-generated title
+1. 初始化 checkpointer 连接（如果未连接）
+2. 获取或创建 chat session（从 `chat_sessions` 表）
+3. 设置 ContextVars（JWT token、LLM config）
+4. 构建 LangGraph config
+5. 流式执行 Agent，同时收集统计信息
+6. 流结束后更新会话统计到数据库
+7. 同步 auto-generated title
 
-**连接管理**：
-- 使用 `AsyncSqliteSaver` 作为 checkpointer
-- 支持 WAL 模式提升并发性能
-- 项目切换时自动关闭旧连接
-- 防止连接被垃圾回收（保存引用）
+**统计收集机制**（在 `stream_chat` 中）：
+
+- 监听 LangGraph 的 `astream_events` 事件流
+- 在事件循环中实时收集统计数据
+- 统计逻辑不依赖转换后的 SSE chunk，直接从原始事件获取
+
+**关键事件处理**：
+- `on_chat_model_start`：LLM 调用次数 +1
+- `on_chat_model_end`：提取 token 使用量，AI 消息计数 +1
+- `on_tool_end`：工具消息计数 +1
+
+**实现位置**：`agent_service.py` 第 233-294 行
 
 ### ProjectAgentManager
 
@@ -448,10 +498,24 @@ agent_manager.remove_agent(project_id)
 - 定期清理旧 checkpoint（可选）
 - 使用索引加速查询（thread_id, user_id + project_id）
 
-### 统计信息批量更新
+### 统计信息收集与更新
 
-- 流结束后一次性更新统计信息
-- 避免频繁的数据库写入
+**收集机制**（在内存中进行）：
+- 在 SSE 流式传输过程中同步收集统计数据
+- 监听 LangGraph 事件流，不增加额外网络开销
+- 使用临时变量累加统计值，避免频繁数据库访问
+
+**更新策略**（流结束后批量写入）：
+- 流式 Chat 完成后，一次性更新 `chat_sessions` 表
+- 使用 SQL 增量更新语法：`message_count = message_count + ?`
+- 单次数据库事务，提交所有统计更新
+
+**优势**：
+- 减少数据库写入次数（N 次事件 → 1 次更新）
+- 降低数据库锁竞争
+- 提升流式响应的实时性
+
+**实现位置**：`agent_service.py` 第 283-294 行
 
 ## 依赖项
 

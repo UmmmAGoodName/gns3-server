@@ -233,30 +233,72 @@ class AgentService:
         # Track statistics for session update
         message_count = 1  # User message
         llm_calls_count = 0
-        tool_calls_count = 0
         input_tokens = 0
         output_tokens = 0
         last_message_at = datetime.utcnow().isoformat()
 
+        # Track if we've counted the AI response for this turn
+        ai_response_counted = False
+        tool_messages_counted = 0
+
         # Stream events
         try:
             async for event in graph.astream_events(inputs, config=config, version="v2"):
+                event_type = event.get("event", "")
+                data = event.get("data", {})
+
+                # Track LLM calls and tokens
+                if event_type == "on_chat_model_start":
+                    llm_calls_count += 1
+                    log.debug("LLM call started, count=%d", llm_calls_count)
+
+                elif event_type == "on_chat_model_end":
+                    # Extract token usage from response metadata
+                    # Try multiple possible locations where token usage might be stored
+                    token_info_found = False
+
+                    # Method 1: response.usage_metadata
+                    response = data.get("response", {})
+                    if hasattr(response, "usage_metadata"):
+                        usage = response.usage_metadata
+                        if usage:
+                            input_tokens += usage.get("input_tokens", 0)
+                            output_tokens += usage.get("output_tokens", 0)
+                            token_info_found = True
+
+                    # Method 2: output.usage_metadata
+                    if not token_info_found:
+                        output_msg = data.get("output", {})
+                        if hasattr(output_msg, "usage_metadata"):
+                            usage = output_msg.usage_metadata
+                            if usage:
+                                input_tokens += usage.get("input_tokens", 0)
+                                output_tokens += usage.get("output_tokens", 0)
+                                token_info_found = True
+
+                    # Method 3: Check data directly for token usage fields
+                    if not token_info_found:
+                        if "input_tokens" in data:
+                            input_tokens += data.get("input_tokens", 0)
+                        if "output_tokens" in data:
+                            output_tokens += data.get("output_tokens", 0)
+                        if "input_tokens" in data or "output_tokens" in data:
+                            token_info_found = True
+
+                    # Count AI response as one message (only once per turn)
+                    if not ai_response_counted:
+                        message_count += 1
+                        ai_response_counted = True
+
+                # Track tool messages
+                elif event_type == "on_tool_end":
+                    message_count += 1  # Tool result message
+                    tool_messages_counted += 1
+                    log.debug("Tool message counted, message_count=%d", message_count)
+
+                # Convert event to chunk for SSE streaming
                 chunk = self._convert_event_to_chunk(event, session_id)
                 if chunk:
-                    # Track statistics
-                    if chunk.get("type") == "content":
-                        message_count += 1  # AI response
-                    elif chunk.get("type") == "tool_start":
-                        tool_calls_count += 1
-                    elif chunk.get("type") == "tool_end":
-                        message_count += 1  # Tool message
-
-                    # Track tokens if available
-                    if chunk.get("type") == "content" and "input_tokens" in chunk:
-                        input_tokens += chunk.get("input_tokens", 0)
-                    if chunk.get("type") == "content" and "output_tokens" in chunk:
-                        output_tokens += chunk.get("output_tokens", 0)
-
                     log.debug("Yielding chunk: type=%s", chunk.get("type"))
                     yield chunk
 
@@ -270,8 +312,8 @@ class AgentService:
                 total_tokens=input_tokens + output_tokens,
                 last_message_at=last_message_at
             )
-            log.debug("Updated session statistics: thread_id=%s, messages=%d, tokens=%d",
-                     session_id, message_count, input_tokens + output_tokens)
+            log.info("Session statistics updated: thread_id=%s, messages=%d, llm_calls=%d, tokens=%d+%d=%d",
+                     session_id, message_count, llm_calls_count, input_tokens, output_tokens, input_tokens + output_tokens)
 
             # Sync auto-generated title from checkpoint state
             final_state = await graph.aget_state(config)
