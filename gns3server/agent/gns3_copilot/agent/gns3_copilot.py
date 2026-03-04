@@ -128,10 +128,17 @@ class MessagesState(TypedDict):
 def llm_call(state: dict, config: RunnableConfig | None = None):
     """LLM decides whether to call a tool or not"""
 
-    # Extract config from LangGraph config
-    configurable = config.get("configurable", {}) if config else {}
-    jwt_token = configurable.get("jwt_token")
-    llm_config = configurable.get("llm_config")
+    # Get llm_config from request-scoped context variable
+    from gns3server.agent.gns3_copilot.gns3_client import get_current_llm_config
+    llm_config = get_current_llm_config()
+
+    if not llm_config:
+        logger.error("LLM config not found in context")
+        return {
+            "messages": [],
+            "llm_calls": state.get("llm_calls", 0),
+            "topology_info": None,
+        }
 
     # Defensive check: skip LLM call if no user messages
     messages = state.get("messages", [])
@@ -228,9 +235,13 @@ def generate_title(state: MessagesState, config: RunnableConfig | None = None) -
     This node is only executed when no title has been set yet (first round only).
     """
 
-    # Extract config from LangGraph config
-    configurable = config.get("configurable", {}) if config else {}
-    llm_config = configurable.get("llm_config")
+    # Get llm_config from request-scoped context variable
+    from gns3server.agent.gns3_copilot.gns3_client import get_current_llm_config
+    llm_config = get_current_llm_config()
+
+    if not llm_config:
+        logger.error("LLM config not found in context, cannot generate title")
+        return {"conversation_title": UNTITLED_SESSION_FALLBACK}
 
     # Only generate a title if it hasn't been set yet
     current_title = state.get("conversation_title")
@@ -305,15 +316,6 @@ def generate_title(state: MessagesState, config: RunnableConfig | None = None) -
 # Define tool node
 def tool_node(state: dict, config: RunnableConfig | None = None):
     """Performs the tool call"""
-
-    # Extract jwt_token from config for tools to use
-    configurable = config.get("configurable", {}) if config else {}
-    jwt_token = configurable.get("jwt_token")
-
-    # Set jwt_token for connector_factory to access
-    if jwt_token:
-        from gns3server.agent.gns3_copilot.gns3_client import set_current_jwt_token
-        set_current_jwt_token(jwt_token)
 
     result = []
     for tool_call in state["messages"][-1].tool_calls:

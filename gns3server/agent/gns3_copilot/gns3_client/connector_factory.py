@@ -30,9 +30,10 @@ import logging
 from typing import Optional
 from contextvars import ContextVar
 
-# Context variable for request-scoped jwt_token
+# Context variables for request-scoped data
 # Automatically cleaned up when request context ends
 _jwt_token_context: ContextVar[Optional[str]] = ContextVar("_jwt_token_context", default=None)
+_llm_config_context: ContextVar[Optional[dict]] = ContextVar("_llm_config_context", default=None)
 
 
 def set_current_jwt_token(token: str) -> None:
@@ -43,6 +44,16 @@ def set_current_jwt_token(token: str) -> None:
 def get_current_jwt_token() -> Optional[str]:
     """Get the JWT token for the current request context."""
     return _jwt_token_context.get()
+
+
+def set_current_llm_config(config: dict) -> None:
+    """Set the LLM config for the current request context."""
+    _llm_config_context.set(config)
+
+
+def get_current_llm_config() -> Optional[dict]:
+    """Get the LLM config for the current request context."""
+    return _llm_config_context.get()
 from uuid import UUID
 
 from gns3server.agent.gns3_copilot.gns3_client.custom_gns3fy import Gns3Connector

@@ -27,6 +27,8 @@ from .connector_factory import (
     get_llm_config,
     set_current_jwt_token,
     get_current_jwt_token,
+    set_current_llm_config,
+    get_current_llm_config,
 )
 from .custom_gns3fy import (
     CONSOLE_TYPES,
@@ -66,4 +68,6 @@ __all__ = [
     "get_llm_config",
     "set_current_jwt_token",
     "get_current_jwt_token",
+    "set_current_llm_config",
+    "get_current_llm_config",
 ]

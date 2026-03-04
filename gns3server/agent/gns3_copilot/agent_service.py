@@ -123,12 +123,18 @@ class AgentService:
         Yields:
             Dict containing SSE-compatible response chunks
         """
-        # Build config with LLM configuration and metadata
+        # Set request-scoped context variables (memory-only, not persisted)
+        if jwt_token:
+            from gns3server.agent.gns3_copilot.gns3_client import set_current_jwt_token
+            set_current_jwt_token(jwt_token)
+        if llm_config:
+            from gns3server.agent.gns3_copilot.gns3_client import set_current_llm_config
+            set_current_llm_config(llm_config)
+
+        # Build config - only thread-safe identifiers
         config = {
             "configurable": {
                 "thread_id": session_id,
-                "jwt_token": jwt_token,
-                "llm_config": llm_config,
             },
             "metadata": {
                 "user_id": user_id,
