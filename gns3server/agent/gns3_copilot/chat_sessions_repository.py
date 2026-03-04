@@ -35,7 +35,8 @@ class ChatSession:
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
         metadata: str = "{}",
-        stats: str = "{}"
+        stats: str = "{}",
+        pinned: bool = False
     ):
         self.id = id
         self.thread_id = thread_id
@@ -52,6 +53,7 @@ class ChatSession:
         self.updated_at = updated_at
         self.metadata = metadata
         self.stats = stats
+        self.pinned = pinned
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -71,6 +73,7 @@ class ChatSession:
             "updated_at": self.updated_at,
             "metadata": json.loads(self.metadata) if self.metadata else {},
             "stats": json.loads(self.stats) if self.stats else {},
+            "pinned": self.pinned,
         }
 
 
@@ -195,7 +198,8 @@ class ChatSessionsRepository:
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
-        query += " ORDER BY updated_at DESC LIMIT ?"
+        # Sort by pinned status first, then by updated_at
+        query += " ORDER BY pinned DESC, updated_at DESC LIMIT ?"
         params.append(limit)
 
         cursor = await self.conn.execute(query, params)
@@ -344,6 +348,27 @@ class ChatSessionsRepository:
 
         return deleted_count
 
+    async def pin_session(self, thread_id: str, pinned: bool = True) -> Optional[ChatSession]:
+        """
+        Pin or unpin a session.
+
+        Args:
+            thread_id: Thread identifier
+            pinned: True to pin, False to unpin
+
+        Returns:
+            Updated ChatSession or None
+        """
+        now = datetime.utcnow().isoformat()
+        await self.conn.execute(
+            "UPDATE chat_sessions SET pinned = ?, updated_at = ? WHERE thread_id = ?",
+            (1 if pinned else 0, now, thread_id)
+        )
+        await self.conn.commit()
+
+        log.debug("Session pin status updated: thread_id=%s, pinned=%s", thread_id, pinned)
+        return await self.get_session_by_thread(thread_id)
+
     def _row_to_session(self, row) -> ChatSession:
         """Convert database row to ChatSession object."""
         return ChatSession(
@@ -362,4 +387,5 @@ class ChatSessionsRepository:
             updated_at=row[12],
             metadata=row[13],
             stats=row[14],
+            pinned=bool(row[15]) if len(row) > 15 else False,
         )

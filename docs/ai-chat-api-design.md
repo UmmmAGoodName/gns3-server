@@ -125,6 +125,42 @@ GNS3 Copilot Agent 需要以下信息才能正常工作：
 | updated_at | TIMESTAMP | 更新时间 |
 | metadata | TEXT | 预留元数据（JSON） |
 | stats | TEXT | 额外统计信息（JSON） |
+| pinned | BOOLEAN | 是否置顶（默认 FALSE） |
+
+**索引**：
+- `idx_thread_id`：thread_id 唯一索引
+- `idx_user_project`：user_id + project_id 复合索引
+- `idx_pinned_updated`：pinned + updated_at 复合索引（用于置顶排序）
+
+### 数据库迁移
+
+**实现位置**：`agent_service.py` 的 `_create_chat_sessions_table` 方法
+
+**迁移策略**：
+- 使用 `PRAGMA table_info(chat_sessions)` 检查列是否存在
+- 如果 `pinned` 列不存在，执行 `ALTER TABLE ADD COLUMN` 添加该列
+- 确保列存在后再创建索引
+
+**代码示例**：
+```python
+# Check if pinned column exists, add it if not (migration for existing databases)
+cursor = await conn.execute("PRAGMA table_info(chat_sessions)")
+columns = await cursor.fetchall()
+column_names = [col[1] for col in columns]
+
+if "pinned" not in column_names:
+    log.debug("Adding pinned column to existing chat_sessions table")
+    await conn.execute("ALTER TABLE chat_sessions ADD COLUMN pinned BOOLEAN DEFAULT FALSE")
+    await conn.commit()
+
+# Create pinned index (after column is guaranteed to exist)
+await conn.execute("CREATE INDEX IF NOT EXISTS idx_pinned_updated ON chat_sessions(pinned DESC, updated_at DESC)")
+```
+
+**优势**：
+- 向后兼容：现有数据库自动升级，无需手动干预
+- 幂等性：重复执行不会报错
+- 零停机：迁移在初始化时自动完成
 
 ### ChatSessionsRepository
 
@@ -132,10 +168,11 @@ GNS3 Copilot Agent 需要以下信息才能正常工作：
 
 - **create_session**：创建新会话
 - **get_session_by_thread**：根据 thread_id 查询会话
-- **list_sessions**：列出用户的会话（支持过滤和分页）
+- **list_sessions**：列出用户的会话（支持过滤和分页，按 pinned 和 updated_at 排序）
 - **update_session**：更新会话（支持增量更新计数器）
 - **delete_session**：删除会话及其 checkpoints
 - **delete_all_sessions**：删除项目的所有会话
+- **pin_session**：置顶或取消置顶会话
 
 ### 统计信息自动收集
 
@@ -249,10 +286,12 @@ Chat API 使用 Server-Sent Events (SSE) 进行流式传输。
 | 方法 | 端点 | 说明 |
 |------|------|------|
 | POST | `/stream` | 流式 Chat（主要接口） |
-| GET | `/sessions` | 列出会话 |
+| GET | `/sessions` | 列出会话（按置顶和更新时间排序） |
 | GET | `/sessions/{session_id}/history` | 获取会话历史 |
 | PATCH | `/sessions/{session_id}` | 重命名会话 |
 | DELETE | `/sessions/{session_id}` | 删除会话 |
+| PUT | `/sessions/{session_id}/pin` | 置顶会话 |
+| DELETE | `/sessions/{session_id}/pin` | 取消置顶会话 |
 
 ### POST /v3/projects/{project_id}/chat/stream
 
@@ -272,7 +311,7 @@ Chat API 使用 Server-Sent Events (SSE) 进行流式传输。
 
 **功能**：列出项目的所有会话
 
-**响应**：会话列表，包含统计信息（消息数、token 使用量等）
+**响应**：会话列表，包含统计信息（消息数、token 使用量等），按置顶状态和更新时间排序
 
 ### GET /v3/projects/{project_id}/chat/sessions/{session_id}/history
 
@@ -302,6 +341,23 @@ Chat API 使用 Server-Sent Events (SSE) 进行流式传输。
 **功能**：删除会话及其所有 checkpoint 数据
 
 **响应**：204 No Content
+
+### PUT /v3/projects/{project_id}/chat/sessions/{session_id}/pin
+
+**功能**：置顶会话到列表顶部
+
+**响应**：更新后的会话信息（包含 pinned=true）
+
+### DELETE /v3/projects/{project_id}/chat/sessions/{session_id}/pin
+
+**功能**：取消置顶会话
+
+**响应**：更新后的会话信息（包含 pinned=false）
+
+**排序规则**：
+- 置顶会话（pinned=true）排在最前面
+- 置顶会话之间按 updated_at 降序排列
+- 普通会话按 updated_at 降序排列
 
 ## 数据模型
 
@@ -338,6 +394,9 @@ Chat API 使用 Server-Sent Events (SSE) 进行流式传输。
 **预留字段**：
 - metadata: 元数据 JSON 字符串（存储 mode、status、tags 等）
 - stats: 额外统计 JSON 字符串（存储工具调用次数等）
+
+**会话管理**：
+- pinned: 是否置顶到列表顶部（默认 false）
 
 ### ConversationHistory
 

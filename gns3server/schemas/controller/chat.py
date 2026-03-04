@@ -103,6 +103,7 @@ class ChatSession(BaseModel):
     updated_at: Optional[str] = Field(None, description="Last update timestamp (ISO 8601)")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Session metadata")
     stats: Dict[str, Any] = Field(default_factory=dict, description="Session statistics")
+    pinned: bool = Field(default=False, description="Whether the session is pinned to the top")
 
 
 class RenameSession(BaseModel):

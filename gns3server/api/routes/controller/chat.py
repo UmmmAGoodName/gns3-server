@@ -323,3 +323,79 @@ async def rename_session(
         )
 
     return schemas.ChatSession(**session)
+
+
+@router.put(
+    "/sessions/{session_id}/pin",
+    response_model=schemas.ChatSession,
+    summary="Pin a chat session",
+    description="Pin a chat session to the top of the list."
+)
+async def pin_session(
+    session_id: str,
+    project: Project = Depends(dep_project),
+    current_user: schemas.User = Depends(get_current_active_user),
+) -> schemas.ChatSession:
+    """
+    Pin a chat session.
+    """
+
+    # Check if project is opened
+    if project.status != "opened":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Project must be opened to pin chat sessions. Current status: {project.status}"
+        )
+
+    # Get AgentService for this project
+    agent_manager = await get_project_agent_manager()
+    agent_service = await agent_manager.get_agent(str(project.id), project.path)
+
+    # Pin session
+    session = await agent_service.pin_session(session_id, pinned=True)
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session '{session_id}' not found"
+        )
+
+    return schemas.ChatSession(**session)
+
+
+@router.delete(
+    "/sessions/{session_id}/pin",
+    response_model=schemas.ChatSession,
+    summary="Unpin a chat session",
+    description="Unpin a chat session from the top of the list."
+)
+async def unpin_session(
+    session_id: str,
+    project: Project = Depends(dep_project),
+    current_user: schemas.User = Depends(get_current_active_user),
+) -> schemas.ChatSession:
+    """
+    Unpin a chat session.
+    """
+
+    # Check if project is opened
+    if project.status != "opened":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Project must be opened to unpin chat sessions. Current status: {project.status}"
+        )
+
+    # Get AgentService for this project
+    agent_manager = await get_project_agent_manager()
+    agent_service = await agent_manager.get_agent(str(project.id), project.path)
+
+    # Unpin session
+    session = await agent_service.pin_session(session_id, pinned=False)
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session '{session_id}' not found"
+        )
+
+    return schemas.ChatSession(**session)

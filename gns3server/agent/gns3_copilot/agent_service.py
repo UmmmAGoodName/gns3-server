@@ -126,13 +126,29 @@ class AgentService:
 
                 -- Reserved fields (JSON strings)
                 metadata TEXT DEFAULT '{}',
-                stats TEXT DEFAULT '{}'
+                stats TEXT DEFAULT '{}',
+
+                -- Pin feature
+                pinned BOOLEAN DEFAULT FALSE
             )
         """)
 
         # Create indexes
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_thread_id ON chat_sessions(thread_id)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_user_project ON chat_sessions(user_id, project_id)")
+
+        # Check if pinned column exists, add it if not (migration for existing databases)
+        cursor = await conn.execute("PRAGMA table_info(chat_sessions)")
+        columns = await cursor.fetchall()
+        column_names = [col[1] for col in columns]
+
+        if "pinned" not in column_names:
+            log.debug("Adding pinned column to existing chat_sessions table")
+            await conn.execute("ALTER TABLE chat_sessions ADD COLUMN pinned BOOLEAN DEFAULT FALSE")
+            await conn.commit()
+
+        # Create pinned index (after column is guaranteed to exist)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_pinned_updated ON chat_sessions(pinned DESC, updated_at DESC)")
 
         await conn.commit()
         log.debug("chat_sessions table created in checkpoint database")
@@ -467,6 +483,24 @@ class AgentService:
 
         repo = ChatSessionsRepository(self._checkpointer_conn)
         session = await repo.update_session(thread_id=session_id, title=new_title)
+        return session.to_dict() if session else None
+
+    async def pin_session(self, session_id: str, pinned: bool = True) -> Optional[Dict[str, Any]]:
+        """
+        Pin or unpin a chat session.
+
+        Args:
+            session_id: Thread ID
+            pinned: True to pin, False to unpin
+
+        Returns:
+            Updated session dictionary or None
+        """
+        if not self._checkpointer_conn:
+            await self._get_checkpointer()
+
+        repo = ChatSessionsRepository(self._checkpointer_conn)
+        session = await repo.pin_session(thread_id=session_id, pinned=pinned)
         return session.to_dict() if session else None
 
     async def close(self):
