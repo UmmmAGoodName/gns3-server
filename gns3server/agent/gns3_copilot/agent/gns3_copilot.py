@@ -214,12 +214,10 @@ def llm_call(state: dict, config: RunnableConfig | None = None):
         llm_config=llm_config
     )
 
-    # Store jwt_token in state for Tools to use when calling GNS3 API
     return {
         "messages": [model_with_tools.invoke(full_messages)],
         "llm_calls": state.get("llm_calls", 0) + 1,
         "topology_info": topology_info,
-        "jwt_token": jwt_token,
     }
 
 
@@ -305,8 +303,17 @@ def generate_title(state: MessagesState, config: RunnableConfig | None = None) -
 
 
 # Define tool node
-def tool_node(state: dict):
+def tool_node(state: dict, config: RunnableConfig | None = None):
     """Performs the tool call"""
+
+    # Extract jwt_token from config for tools to use
+    configurable = config.get("configurable", {}) if config else {}
+    jwt_token = configurable.get("jwt_token")
+
+    # Set jwt_token for connector_factory to access
+    if jwt_token:
+        from gns3server.agent.gns3_copilot.gns3_client import set_current_jwt_token
+        set_current_jwt_token(jwt_token)
 
     result = []
     for tool_call in state["messages"][-1].tool_calls:

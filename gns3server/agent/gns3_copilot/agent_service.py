@@ -46,7 +46,7 @@ class AgentService:
 
     def _get_checkpoint_dir(self) -> str:
         """Get or create the checkpoint directory for this project."""
-        checkpoint_dir = os.path.join(self.project_path, ".gns3-copilot")
+        checkpoint_dir = os.path.join(self.project_path, "gns3-copilot")
         os.makedirs(checkpoint_dir, exist_ok=True)
         return checkpoint_dir
 
@@ -103,6 +103,7 @@ class AgentService:
         message: str,
         session_id: str,
         project_id: Optional[str] = None,
+        user_id: Optional[str] = None,
         jwt_token: Optional[str] = None,
         mode: str = "text",
         llm_config: Optional[Dict[str, Any]] = None
@@ -114,6 +115,7 @@ class AgentService:
             message: User message
             session_id: Session/thread ID for conversation continuity
             project_id: GNS3 project ID (optional, for context)
+            user_id: User ID for metadata tracking
             jwt_token: JWT token for API authentication (optional)
             mode: Interaction mode (default: "text")
             llm_config: LLM configuration dict (provider, model, api_key, etc.)
@@ -121,12 +123,16 @@ class AgentService:
         Yields:
             Dict containing SSE-compatible response chunks
         """
-        # Build config with LLM configuration
+        # Build config with LLM configuration and metadata
         config = {
             "configurable": {
                 "thread_id": session_id,
                 "jwt_token": jwt_token,
                 "llm_config": llm_config,
+            },
+            "metadata": {
+                "user_id": user_id,
+                "project_id": project_id,
             }
         }
 

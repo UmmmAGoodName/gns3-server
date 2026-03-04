@@ -117,6 +117,7 @@ async def stream_chat(
                 message=request.message,
                 session_id=session_id,
                 project_id=str(project.id),
+                user_id=user_id,
                 jwt_token=jwt_token,
                 mode=request.mode,
                 llm_config=llm_config

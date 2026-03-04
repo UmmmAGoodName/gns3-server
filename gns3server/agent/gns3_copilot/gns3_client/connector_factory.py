@@ -28,6 +28,21 @@ Authentication:
 
 import logging
 from typing import Optional
+from contextvars import ContextVar
+
+# Context variable for request-scoped jwt_token
+# Automatically cleaned up when request context ends
+_jwt_token_context: ContextVar[Optional[str]] = ContextVar("_jwt_token_context", default=None)
+
+
+def set_current_jwt_token(token: str) -> None:
+    """Set the JWT token for the current request context."""
+    _jwt_token_context.set(token)
+
+
+def get_current_jwt_token() -> Optional[str]:
+    """Get the JWT token for the current request context."""
+    return _jwt_token_context.get()
 from uuid import UUID
 
 from gns3server.agent.gns3_copilot.gns3_client.custom_gns3fy import Gns3Connector
@@ -136,9 +151,12 @@ def get_gns3_connector(jwt_token: str, url: Optional[str] = None) -> Optional[Gn
     """
     try:
         # Validate JWT token
+        # If not provided, try to get from current request context
         if not jwt_token:
-            logger.error("JWT token parameter is required")
-            return None
+            jwt_token = get_current_jwt_token()
+            if not jwt_token:
+                logger.error("JWT token is required")
+                return None
 
         # Resolve URL with fallback strategy
         if url is None:
