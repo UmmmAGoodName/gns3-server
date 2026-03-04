@@ -37,6 +37,7 @@ import operator
 from typing import Annotated, Literal
 
 from langchain.messages import AnyMessage, SystemMessage, ToolMessage
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 from langgraph.managed.is_last_step import RemainingSteps
 from typing_extensions import TypedDict
@@ -124,7 +125,7 @@ class MessagesState(TypedDict):
 
 
 # Define llm call  node
-def llm_call(state: dict, config: dict = None):
+def llm_call(state: dict, config: RunnableConfig | None = None):
     """LLM decides whether to call a tool or not"""
 
     # Extract user authentication info from LangGraph config
@@ -226,7 +227,7 @@ def llm_call(state: dict, config: dict = None):
 
 
 # Define generate title node
-def generate_title(state: MessagesState, config: dict = None) -> dict:
+def generate_title(state: MessagesState, config: RunnableConfig | None = None) -> dict:
     """
     Generate a conversation title using a lightweight assistant LLM (title_model).
     This node is only executed when no title has been set yet (first round only).
