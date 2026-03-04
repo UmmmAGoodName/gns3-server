@@ -23,7 +23,7 @@ import logging
 import uuid
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from uuid import UUID
 
@@ -186,7 +186,7 @@ async def get_history(
     description="List all chat sessions for a project (not yet implemented)."
 )
 async def list_sessions(
-    project_id: UUID,
+    project_id: UUID = Query(..., description="GNS3 project ID"),
     current_user: schemas.User = Depends(get_current_active_user),
 ) -> list[schemas.ChatSession]:
     """
