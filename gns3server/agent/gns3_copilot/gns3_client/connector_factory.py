@@ -363,6 +363,7 @@ def get_llm_config(user_id, jwt_token: str) -> Optional[dict]:
             api_key = config['api_key']
     """
     import asyncio
+    import threading
 
     try:
         # Convert user_id to UUID if it's a string
@@ -375,10 +376,12 @@ def get_llm_config(user_id, jwt_token: str) -> Optional[dict]:
         # Import the async helper
         from gns3server.agent.gns3_copilot.utils.llm_config_helper import get_user_llm_config
 
-        # Run async function in sync context
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If loop is already running, run in a new thread
+        # Check if we're in the main thread with a running event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # We're in an async context with a running loop
+            # This shouldn't happen since this is a sync function,
+            # but if it does, we need to run in a separate thread
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(
@@ -386,9 +389,36 @@ def get_llm_config(user_id, jwt_token: str) -> Optional[dict]:
                     get_user_llm_config(user_id, jwt_token, url)
                 )
                 return future.result(timeout=10)
-        else:
-            # No loop running, use run() directly
-            return asyncio.run(get_user_llm_config(user_id, jwt_token, url))
+        except RuntimeError:
+            # No running event loop - we're in a sync context (possibly a thread pool)
+            # This is the expected path for our use case
+            pass
+
+        # Try to get an existing event loop, or create a new one
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Loop is running but not the running loop (edge case)
+                # Create a new loop in a thread
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        asyncio.run,
+                        get_user_llm_config(user_id, jwt_token, url)
+                    )
+                    return future.result(timeout=10)
+            else:
+                # Loop exists but not running - use it
+                return loop.run_until_complete(get_user_llm_config(user_id, jwt_token, url))
+        except RuntimeError:
+            # No event loop exists - create a new one
+            # This happens when called from a thread pool executor
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(get_user_llm_config(user_id, jwt_token, url))
+            finally:
+                loop.close()
 
     except Exception as e:
         logger.error("Failed to get LLM config for user %s: %s", user_id, e)
