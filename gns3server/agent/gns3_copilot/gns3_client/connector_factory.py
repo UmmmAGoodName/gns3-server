@@ -129,7 +129,7 @@ def _get_url_from_config() -> Optional[str]:
         return None
 
 
-def get_gns3_connector(jwt_token: str, url: Optional[str] = None) -> Optional[Gns3Connector]:
+def get_gns3_connector(jwt_token: Optional[str] = None, url: Optional[str] = None) -> Optional[Gns3Connector]:
     """Create and return a Gns3Connector instance with JWT authentication.
 
     URL Resolution Strategy (in order):
@@ -139,7 +139,7 @@ def get_gns3_connector(jwt_token: str, url: Optional[str] = None) -> Optional[Gn
         4. Fallback to DEFAULT_GNS3_URL (http://127.0.0.1:3080)
 
     Args:
-        jwt_token: JWT token for authentication
+        jwt_token: JWT token for authentication (optional, will be retrieved from context if not provided)
         url: GNS3 server URL (optional, auto-detected if not provided)
 
     Returns:
