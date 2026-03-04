@@ -60,6 +60,7 @@ from gns3server.agent.gns3_copilot.tools_v2 import (
     GNS3LinkTool,
     GNS3StartNodeTool,
     GNS3TemplateTool,
+    GNS3UpdateNodeNameTool,
     VPCSMultiCommands,
 )
 
@@ -76,6 +77,7 @@ tools = [
     GNS3CreateNodeTool(),  # Create new nodes in GNS3
     GNS3LinkTool(),  # Create links between nodes
     GNS3StartNodeTool(),  # Start GNS3 nodes
+    GNS3UpdateNodeNameTool(),  # Update node name
     ExecuteMultipleDeviceCommands(),  # Execute show/display/debug commands on multiple devices (READ-ONLY)
     VPCSMultiCommands(),  # Execute VPCS commands on multiple devices
 ]
