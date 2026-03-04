@@ -345,7 +345,6 @@ def should_continue(
     - Otherwise → conversation is complete, go to END
     """
     last_message = state["messages"][-1]
-    llm_calls = state.get("llm_calls", 0)
     current_title = state.get("conversation_title")
 
     # LLM requested one or more tool executions
@@ -354,9 +353,6 @@ def should_continue(
 
     # First full interaction completed and title not yet generated
     if current_title in [None, "New Conversation"]:
-        logger.info(
-            "First turn finished, no title yet → routing to 'title_generator_node'"
-        )
         return "title_generator_node"
 
     # Normal completion (multi-turn conversation or title already exists)
