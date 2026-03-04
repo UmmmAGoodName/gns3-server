@@ -82,7 +82,16 @@ async def stream_chat(
     This endpoint uses Server-Sent Events (SSE) to stream responses from
     the AI agent. Each message is a JSON object with a `type` field indicating
     the message kind (content, tool_call, tool_start, tool_end, error, done, heartbeat).
+
+    The project must be opened to use chat functionality.
     """
+
+    # Check if project is opened
+    if project.status != "opened":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Project must be opened to use chat. Current status: {project.status}"
+        )
 
     # Get user authentication info
     user_id = str(current_user.user_id)
@@ -165,6 +174,14 @@ async def list_sessions(
     Note: This endpoint is a placeholder. Full session listing functionality
     requires checkpoint metadata inspection which is not yet implemented.
     """
+
+    # Check if project is opened
+    if project.status != "opened":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Project must be opened to access chat sessions. Current status: {project.status}"
+        )
+
     # TODO: Implement session listing from checkpoint metadata
     return []
 
@@ -184,6 +201,13 @@ async def get_history(
     """
     Get conversation history for a session.
     """
+
+    # Check if project is opened
+    if project.status != "opened":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Project must be opened to access chat history. Current status: {project.status}"
+        )
 
     # Get AgentService for this project
     agent_manager = await get_project_agent_manager()
@@ -212,6 +236,14 @@ async def delete_session(
     Note: This endpoint is a placeholder. Full session deletion functionality
     requires checkpoint manipulation which is not yet implemented.
     """
+
+    # Check if project is opened
+    if project.status != "opened":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Project must be opened to delete chat sessions. Current status: {project.status}"
+        )
+
     # TODO: Implement session deletion from checkpoint
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
