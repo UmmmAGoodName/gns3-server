@@ -160,8 +160,6 @@ class AgentService:
                 if chunk:
                     yield chunk
 
-            yield {"type": "done", "session_id": session_id}
-
         except Exception as e:
             log.error("Error in stream_chat: %s", e, exc_info=True)
             yield {"type": "error", "error": str(e), "session_id": session_id}
