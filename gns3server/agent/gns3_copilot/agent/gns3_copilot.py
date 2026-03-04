@@ -117,9 +117,6 @@ class MessagesState(TypedDict):
     # Optional conversation title
     conversation_title: str | None
 
-    # Store the complete tuple selected by the user
-    selected_project: tuple[str, str, int, int, str] | None
-
     # Store GNS3 topology information
     topology_info: dict | None
 
@@ -155,65 +152,45 @@ def llm_call(state: dict, config: RunnableConfig | None = None):
             "topology_info": None,
         }
 
-    # Get mode from state (if provided), default to "text"
-    mode = state.get("mode", "text")
-
     # Get system prompt based on ENGLISH_LEVEL configuration
     # load_system_prompt() will select base_prompt.py or english_level_prompt_a1-c2.py
     # based on the ENGLISH_LEVEL environment variable
     current_prompt = load_system_prompt()
 
-    # print(current_prompt)
-
-    # Get the previously stored project tuple
-    selected_p = state.get("selected_project")
+    # Get project_id from config configurable (set when starting the chat)
+    project_id = None
+    if config and config.get("configurable"):
+        project_id = config["configurable"].get("project_id")
 
     # Construct context messages
     context_messages = []
     topology_info = None
 
-    if selected_p:
-        # Convert tuple information to natural language to tell LLM which project user selected
-        project_info = (
-            "User has selected project: "
-            f"Project_Name={selected_p[0]}, "
-            f"Project_ID={selected_p[1]}, "
-            f"Device_Number={selected_p[2]}, "
-            f"Link_Number={selected_p[3]}, "
-            f"Status={selected_p[4]}"
-        )
-
-        # Try to retrieve topology information
+    if project_id:
+        # Try to retrieve topology information using project_id from config
         try:
             topology_tool = GNS3TopologyTool()
-            topology = topology_tool._run(project_id=selected_p[1])
+            topology = topology_tool._run(project_id=project_id)
 
             if topology and "error" not in topology:
                 topology_info = topology
                 logger.info(
-                    "Successfully retrieved topology for project: %s", selected_p[0]
+                    "Successfully retrieved topology for project_id: %s, name: %s",
+                    project_id, topology.get("name")
                 )
 
                 # Convert topology dict to string for LLM consumption
                 topology_context = str(topology)
                 context_messages.append(
-                    SystemMessage(
-                        content=f"Current Context: {project_info}\n\nTopology:\n{topology_context}"
-                    )
+                    SystemMessage(content=f"Current Topology:\n{topology_context}")
                 )
             else:
                 logger.warning(
-                    "Failed to retrieve topology: %s",
-                    topology.get("error", "Unknown error"),
-                )
-                context_messages.append(
-                    SystemMessage(content=f"Current Context: {project_info}")
+                    "Failed to retrieve topology for project_id %s: %s",
+                    project_id, topology.get("error", "Unknown error") if topology else "No result"
                 )
         except Exception as e:
-            logger.warning("Error retrieving topology: %s", e)
-            context_messages.append(
-                SystemMessage(content=f"Current Context: {project_info}")
-            )
+            logger.warning("Error retrieving topology for project_id %s: %s", project_id, e)
 
     # Merge message lists
     full_messages = (

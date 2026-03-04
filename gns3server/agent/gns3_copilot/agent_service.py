@@ -146,10 +146,10 @@ class AgentService:
         config = {
             "configurable": {
                 "thread_id": session_id,
+                "project_id": project_id,
             },
             "metadata": {
                 "user_id": user_id,
-                "project_id": project_id,
             }
         }
 
