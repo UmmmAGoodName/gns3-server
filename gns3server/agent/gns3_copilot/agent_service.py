@@ -171,7 +171,8 @@ class AgentService:
         if event_type == "on_chat_model_stream":
             # Streaming text content from LLM
             chunk = data.get("chunk", {})
-            content = chunk.get("content", "")
+            # chunk is AIMessageChunk object, access content directly
+            content = getattr(chunk, "content", "")
             if content:
                 return {"type": "content", "content": content}
 
