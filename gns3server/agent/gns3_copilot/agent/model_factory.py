@@ -6,7 +6,6 @@ Configuration is loaded from the llm_model_configs system via connector_factory.
 """
 
 import logging
-import os
 from typing import Any, Optional
 from uuid import UUID
 
@@ -28,7 +27,6 @@ def _load_llm_config(
     Priority order:
     1. Provided llm_config dictionary (highest priority)
     2. Fetch from llm_model_configs system via connector_factory (requires user_id and jwt_token)
-    3. Environment variables (fallback for backward compatibility)
 
     Args:
         user_id: User UUID for fetching config from database
@@ -37,6 +35,9 @@ def _load_llm_config(
 
     Returns:
         Dictionary containing model configuration.
+
+    Raises:
+        ValueError: If no configuration can be found.
     """
     # Priority 1: Use provided llm_config dictionary
     if llm_config:
@@ -66,20 +67,15 @@ def _load_llm_config(
                 "base_url": config.get("base_url", ""),
                 "temperature": str(config.get("temperature", "0")),
             }
-        else:
-            logger.warning(
-                f"No LLM config found in database for user {user_id}, falling back to environment variables"
-            )
 
-    # Priority 3: Fallback to environment variables
-    logger.info("Loading LLM config from environment variables (fallback)")
-    return {
-        "model_name": os.getenv("MODEL_NAME", ""),
-        "model_provider": os.getenv("MODE_PROVIDER", ""),
-        "api_key": os.getenv("MODEL_API_KEY", ""),
-        "base_url": os.getenv("BASE_URL", ""),
-        "temperature": os.getenv("TEMPERATURE", "0"),
-    }
+    # No configuration found
+    error_msg = "LLM configuration not found"
+    if not llm_config:
+        if not user_id or not jwt_token:
+            error_msg += ": user_id and jwt_token are required for fetching LLM configuration"
+        else:
+            error_msg += f": no LLM configuration found for user {user_id}"
+    raise ValueError(error_msg)
 
 
 def create_base_model(
@@ -92,8 +88,7 @@ def create_base_model(
 
     Configuration priority:
     1. llm_config dictionary (if provided)
-    2. Fetch from llm_model_configs system via connector_factory (if user_id and jwt_token provided)
-    3. Environment variables (fallback)
+    2. Fetch from llm_model_configs system via connector_factory (requires user_id and jwt_token)
 
     Args:
         user_id: User UUID for fetching config from database
@@ -106,32 +101,33 @@ def create_base_model(
 
     Raises:
         ValueError: If required configuration fields are missing or invalid.
+        RuntimeError: If model creation fails.
     """
-    env_vars = _load_llm_config(user_id, jwt_token, llm_config)
+    config_vars = _load_llm_config(user_id, jwt_token, llm_config)
 
     # Log the loaded configuration (mask sensitive data)
     logger.info(
         "Creating base model: name=%s, provider=%s, base_url=%s, temperature=%s",
-        env_vars["model_name"],
-        env_vars["model_provider"],
-        env_vars["base_url"] if env_vars["base_url"] else "default",
-        env_vars["temperature"],
+        config_vars["model_name"],
+        config_vars["model_provider"],
+        config_vars["base_url"] if config_vars["base_url"] else "default",
+        config_vars["temperature"],
     )
 
     # Validate required fields
-    if not env_vars["model_name"]:
-        raise ValueError("MODEL_NAME environment variable is required")
+    if not config_vars["model_name"]:
+        raise ValueError("LLM configuration requires 'model' field")
 
-    if not env_vars["model_provider"]:
-        raise ValueError("MODE_PROVIDER environment variable is required")
+    if not config_vars["model_provider"]:
+        raise ValueError("LLM configuration requires 'provider' field")
 
     try:
         model = init_chat_model(
-            env_vars["model_name"],
-            model_provider=env_vars["model_provider"],
-            api_key=env_vars["api_key"],
-            base_url=env_vars["base_url"],
-            temperature=env_vars["temperature"],
+            config_vars["model_name"],
+            model_provider=config_vars["model_provider"],
+            api_key=config_vars["api_key"],
+            base_url=config_vars["base_url"],
+            temperature=config_vars["temperature"],
             configurable_fields="any",
             config_prefix="foo",
         )
@@ -158,8 +154,7 @@ def create_title_model(
 
     Configuration priority:
     1. llm_config dictionary (if provided)
-    2. Fetch from llm_model_configs system via connector_factory (if user_id and jwt_token provided)
-    3. Environment variables (fallback)
+    2. Fetch from llm_model_configs system via connector_factory (requires user_id and jwt_token)
 
     Args:
         user_id: User UUID for fetching config from database
@@ -172,29 +167,30 @@ def create_title_model(
 
     Raises:
         ValueError: If required configuration fields are missing or invalid.
+        RuntimeError: If model creation fails.
     """
-    env_vars = _load_llm_config(user_id, jwt_token, llm_config)
+    config_vars = _load_llm_config(user_id, jwt_token, llm_config)
 
     logger.info(
         "Creating title model: name=%s, provider=%s, base_url=%s, temperature=1.0",
-        env_vars["model_name"],
-        env_vars["model_provider"],
-        env_vars["base_url"] if env_vars["base_url"] else "default",
+        config_vars["model_name"],
+        config_vars["model_provider"],
+        config_vars["base_url"] if config_vars["base_url"] else "default",
     )
 
     # Validate required fields
-    if not env_vars["model_name"]:
-        raise ValueError("MODEL_NAME environment variable is required")
+    if not config_vars["model_name"]:
+        raise ValueError("LLM configuration requires 'model' field")
 
-    if not env_vars["model_provider"]:
-        raise ValueError("MODE_PROVIDER environment variable is required")
+    if not config_vars["model_provider"]:
+        raise ValueError("LLM configuration requires 'provider' field")
 
     try:
         model = init_chat_model(
-            env_vars["model_name"],
-            model_provider=env_vars["model_provider"],
-            api_key=env_vars["api_key"],
-            base_url=env_vars["base_url"],
+            config_vars["model_name"],
+            model_provider=config_vars["model_provider"],
+            api_key=config_vars["api_key"],
+            base_url=config_vars["base_url"],
             temperature="1.0",  # Higher temperature for more creative titles
             configurable_fields="any",
             config_prefix="foo",
@@ -248,8 +244,7 @@ def create_base_model_with_tools(
 
     Configuration priority:
     1. llm_config dictionary (if provided)
-    2. Fetch from llm_model_configs system via connector_factory (if user_id and jwt_token provided)
-    3. Environment variables (fallback)
+    2. Fetch from llm_model_configs system via connector_factory (requires user_id and jwt_token)
 
     Args:
         tools: List of tools to bind to the model.

@@ -28,6 +28,7 @@ Authentication:
 
 import logging
 from typing import Optional
+from uuid import UUID
 
 from gns3server.agent.gns3_copilot.gns3_client.custom_gns3fy import Gns3Connector
 
