@@ -86,15 +86,29 @@ async def stream_chat(
     The project must be opened to use chat functionality.
     """
 
+    # Get user authentication info
+    user_id = str(current_user.user_id)
+
     # Check if project is opened
     if project.status != "opened":
+        log.warning(
+            "Chat rejected: project not opened. user_id=%s, project_id=%s, status=%s",
+            user_id,
+            project.id,
+            project.status
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Project must be opened to use chat. Current status: {project.status}"
         )
 
-    # Get user authentication info
-    user_id = str(current_user.user_id)
+    log.info(
+        "Chat request started: user_id=%s, project_id=%s, project_name=%s, session_id=%s",
+        user_id,
+        project.id,
+        project.name,
+        request.session_id or "(new)",
+    )
 
     # Get JWT token from Authorization header
     auth_header = http_request.headers.get("Authorization", "")
@@ -107,21 +121,33 @@ async def stream_chat(
     from gns3server.db.tasks import get_user_llm_config_full
     llm_config = await get_user_llm_config_full(user_id, app)
     if not llm_config:
+        log.warning("LLM config not found for user: %s", user_id)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="LLM configuration not found. Please configure your LLM settings first."
         )
 
+    log.debug(
+        "LLM config loaded: user_id=%s, provider=%s, model=%s",
+        user_id,
+        llm_config.get("provider"),
+        llm_config.get("model"),
+    )
+
     # Get or create AgentService for this project
     agent_manager = await get_project_agent_manager()
     agent_service = await agent_manager.get_agent(str(project.id), project.path)
+    log.debug("AgentService obtained for project: %s", project.id)
 
     # Generate session_id if not provided
     session_id = request.session_id or str(uuid.uuid4())
+    if not request.session_id:
+        log.debug("New session created: %s", session_id)
 
     async def generate():
         """Generator for SSE streaming."""
         try:
+            log.debug("Starting stream: session_id=%s", session_id)
             async for chunk in agent_service.stream_chat(
                 message=request.message,
                 session_id=session_id,
@@ -141,6 +167,7 @@ async def stream_chat(
                     continue
 
             # Final done message
+            log.debug("Stream completed: session_id=%s", session_id)
             yield f"data: {json.dumps({'type': 'done', 'session_id': session_id})}\n\n"
 
         except Exception as e:

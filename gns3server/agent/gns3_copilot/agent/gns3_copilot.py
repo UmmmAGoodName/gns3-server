@@ -128,6 +128,8 @@ class MessagesState(TypedDict):
 def llm_call(state: dict, config: RunnableConfig | None = None):
     """LLM decides whether to call a tool or not"""
 
+    logger.info("LLM call node invoked")
+
     # Get llm_config from request-scoped context variable
     from gns3server.agent.gns3_copilot.gns3_client import get_current_llm_config
     llm_config = get_current_llm_config()
@@ -140,9 +142,13 @@ def llm_call(state: dict, config: RunnableConfig | None = None):
             "topology_info": None,
         }
 
+    logger.debug("LLM config retrieved from context: provider=%s, model=%s",
+                 llm_config.get("provider"), llm_config.get("model"))
+
     # Defensive check: skip LLM call if no user messages
     messages = state.get("messages", [])
     if not messages or len(messages) == 0:
+        logger.warning("No messages in state, skipping LLM call")
         return {
             "messages": [],
             "llm_calls": state.get("llm_calls", 0),
@@ -216,13 +222,21 @@ def llm_call(state: dict, config: RunnableConfig | None = None):
     # print(full_messages)
 
     # Create fresh model with tools for each LLM call
+    logger.debug("Creating model with tools: provider=%s, model=%s",
+                 llm_config.get("provider"), llm_config.get("model"))
     model_with_tools = create_base_model_with_tools(
         tools,
         llm_config=llm_config
     )
 
+    logger.info("Invoking LLM with %d messages", len(full_messages))
+    response = model_with_tools.invoke(full_messages)
+
+    logger.info("LLM call completed: tool_calls=%d",
+                len(response.tool_calls) if hasattr(response, 'tool_calls') else 0)
+
     return {
-        "messages": [model_with_tools.invoke(full_messages)],
+        "messages": [response],
         "llm_calls": state.get("llm_calls", 0) + 1,
         "topology_info": topology_info,
     }
@@ -317,10 +331,21 @@ def generate_title(state: MessagesState, config: RunnableConfig | None = None) -
 def tool_node(state: dict, config: RunnableConfig | None = None):
     """Performs the tool call"""
 
+    tool_calls = state["messages"][-1].tool_calls
+    logger.info("Tool node invoked: tool_calls=%d", len(tool_calls))
+
     result = []
-    for tool_call in state["messages"][-1].tool_calls:
-        tool = tools_by_name[tool_call["name"]]
-        observation = tool.invoke(tool_call["args"])
+    for tool_call in tool_calls:
+        tool_name = tool_call["name"]
+        logger.debug("Executing tool: %s with args: %s", tool_name, tool_call["args"])
+        tool = tools_by_name[tool_name]
+        try:
+            observation = tool.invoke(tool_call["args"])
+            logger.debug("Tool %s completed: output_length=%d",
+                         tool_name, len(str(observation)) if observation else 0)
+        except Exception as e:
+            logger.error("Tool %s failed: %s", tool_name, e, exc_info=True)
+            observation = f"Error: {str(e)}"
         result.append(ToolMessage(
             content=observation,
             tool_call_id=tool_call["id"],

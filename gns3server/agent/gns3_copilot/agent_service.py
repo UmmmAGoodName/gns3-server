@@ -123,13 +123,24 @@ class AgentService:
         Yields:
             Dict containing SSE-compatible response chunks
         """
+        log.info(
+            "Stream chat started: project_id=%s, user_id=%s, session_id=%s, mode=%s",
+            project_id,
+            user_id,
+            session_id,
+            mode,
+        )
+
         # Set request-scoped context variables (memory-only, not persisted)
         if jwt_token:
             from gns3server.agent.gns3_copilot.gns3_client import set_current_jwt_token
             set_current_jwt_token(jwt_token)
+            log.debug("JWT token set in context")
         if llm_config:
             from gns3server.agent.gns3_copilot.gns3_client import set_current_llm_config
             set_current_llm_config(llm_config)
+            log.debug("LLM config set in context: provider=%s, model=%s",
+                       llm_config.get("provider"), llm_config.get("model"))
 
         # Build config - only thread-safe identifiers
         config = {
@@ -152,12 +163,14 @@ class AgentService:
 
         # Get the compiled graph
         graph = await self._get_graph()
+        log.debug("LangGraph graph obtained, starting stream")
 
         # Stream events
         try:
             async for event in graph.astream_events(inputs, config=config, version="v2"):
                 chunk = self._convert_event_to_chunk(event, session_id)
                 if chunk:
+                    log.debug("Yielding chunk: type=%s", chunk.get("type"))
                     yield chunk
 
         except Exception as e:
