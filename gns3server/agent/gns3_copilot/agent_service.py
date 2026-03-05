@@ -308,19 +308,19 @@ class AgentService:
 
                 # Track LLM calls and tokens
                 if event_type == "on_chat_model_start":
-                    # Filter out generate_title node from statistics
+                    # Filter out title_generator_node from statistics
                     langgraph_node = event.get("metadata", {}).get("langgraph_node", "")
-                    if langgraph_node != "generate_title":
+                    if langgraph_node != "title_generator_node":
                         llm_calls_count += 1
                         log.debug("LLM call started, count=%d", llm_calls_count)
                     else:
-                        log.debug("Skipping LLM call count for internal node: generate_title")
+                        log.debug("Skipping LLM call count for internal node: title_generator_node")
 
                 elif event_type == "on_chat_model_end":
-                    # Filter out generate_title node from token counting
+                    # Filter out title_generator_node from token counting
                     langgraph_node = event.get("metadata", {}).get("langgraph_node", "")
-                    if langgraph_node == "generate_title":
-                        log.debug("Skipping token counting for internal node: generate_title")
+                    if langgraph_node == "title_generator_node":
+                        log.debug("Skipping token counting for internal node: title_generator_node")
                     else:
                         # Extract token usage from response metadata
                         # Try multiple possible locations where token usage might be stored
@@ -368,11 +368,11 @@ class AgentService:
                 # Convert event to chunk for SSE streaming
                 # Use accumulator for on_chat_model_stream events to handle progressive tool calls
 
-                # Filter out internal nodes (generate_title) from streaming to frontend
+                # Filter out internal nodes (title_generator_node) from streaming to frontend
                 langgraph_node = event.get("metadata", {}).get("langgraph_node", "")
-                if langgraph_node == "generate_title":
-                    # Skip all events from the generate_title node (internal use only)
-                    log.debug("Skipping event from internal node: generate_title")
+                if langgraph_node == "title_generator_node":
+                    # Skip all events from the title_generator_node (internal use only)
+                    log.debug("Skipping event from internal node: title_generator_node")
                     continue
 
                 if event_type == "on_chat_model_stream":

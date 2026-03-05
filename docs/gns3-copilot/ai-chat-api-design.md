@@ -221,7 +221,7 @@ await conn.execute("CREATE INDEX IF NOT EXISTS idx_pinned_updated ON chat_sessio
 
 ### Title 自动同步
 
-会话标题由 `generate_title` 节点自动生成，保存在 LangGraph checkpoint 的 `conversation_title` 字段中。
+会话标题由 `title_generator_node` 节点自动生成，保存在 LangGraph checkpoint 的 `conversation_title` 字段中。
 
 **同步机制**：
 1. 流式 Chat 完成后，从 checkpoint 读取最终 state
