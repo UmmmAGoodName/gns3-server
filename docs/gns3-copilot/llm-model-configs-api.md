@@ -360,7 +360,7 @@ curl -X GET http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
       "context_limit": 128,
       "context_strategy": "balanced",
       "api_key": "sk-xxx",
-      "copilot_mode": "lab_assistant"
+      "copilot_mode": "lab_automation_assistant"
     },
     "user_id": "uuid-user",
     "group_id": null,
