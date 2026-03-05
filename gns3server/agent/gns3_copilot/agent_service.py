@@ -308,46 +308,56 @@ class AgentService:
 
                 # Track LLM calls and tokens
                 if event_type == "on_chat_model_start":
-                    llm_calls_count += 1
-                    log.debug("LLM call started, count=%d", llm_calls_count)
+                    # Filter out generate_title node from statistics
+                    langgraph_node = event.get("metadata", {}).get("langgraph_node", "")
+                    if langgraph_node != "generate_title":
+                        llm_calls_count += 1
+                        log.debug("LLM call started, count=%d", llm_calls_count)
+                    else:
+                        log.debug("Skipping LLM call count for internal node: generate_title")
 
                 elif event_type == "on_chat_model_end":
-                    # Extract token usage from response metadata
-                    # Try multiple possible locations where token usage might be stored
-                    token_info_found = False
+                    # Filter out generate_title node from token counting
+                    langgraph_node = event.get("metadata", {}).get("langgraph_node", "")
+                    if langgraph_node == "generate_title":
+                        log.debug("Skipping token counting for internal node: generate_title")
+                    else:
+                        # Extract token usage from response metadata
+                        # Try multiple possible locations where token usage might be stored
+                        token_info_found = False
 
-                    # Method 1: response.usage_metadata
-                    response = data.get("response", {})
-                    if hasattr(response, "usage_metadata"):
-                        usage = response.usage_metadata
-                        if usage:
-                            input_tokens += usage.get("input_tokens", 0)
-                            output_tokens += usage.get("output_tokens", 0)
-                            token_info_found = True
-
-                    # Method 2: output.usage_metadata
-                    if not token_info_found:
-                        output_msg = data.get("output", {})
-                        if hasattr(output_msg, "usage_metadata"):
-                            usage = output_msg.usage_metadata
+                        # Method 1: response.usage_metadata
+                        response = data.get("response", {})
+                        if hasattr(response, "usage_metadata"):
+                            usage = response.usage_metadata
                             if usage:
                                 input_tokens += usage.get("input_tokens", 0)
                                 output_tokens += usage.get("output_tokens", 0)
                                 token_info_found = True
 
-                    # Method 3: Check data directly for token usage fields
-                    if not token_info_found:
-                        if "input_tokens" in data:
-                            input_tokens += data.get("input_tokens", 0)
-                        if "output_tokens" in data:
-                            output_tokens += data.get("output_tokens", 0)
-                        if "input_tokens" in data or "output_tokens" in data:
-                            token_info_found = True
+                        # Method 2: output.usage_metadata
+                        if not token_info_found:
+                            output_msg = data.get("output", {})
+                            if hasattr(output_msg, "usage_metadata"):
+                                usage = output_msg.usage_metadata
+                                if usage:
+                                    input_tokens += usage.get("input_tokens", 0)
+                                    output_tokens += usage.get("output_tokens", 0)
+                                    token_info_found = True
 
-                    # Count AI response as one message (only once per turn)
-                    if not ai_response_counted:
-                        message_count += 1
-                        ai_response_counted = True
+                        # Method 3: Check data directly for token usage fields
+                        if not token_info_found:
+                            if "input_tokens" in data:
+                                input_tokens += data.get("input_tokens", 0)
+                            if "output_tokens" in data:
+                                output_tokens += data.get("output_tokens", 0)
+                            if "input_tokens" in data or "output_tokens" in data:
+                                token_info_found = True
+
+                        # Count AI response as one message (only once per turn)
+                        if not ai_response_counted:
+                            message_count += 1
+                            ai_response_counted = True
 
                 # Track tool messages
                 elif event_type == "on_tool_end":
@@ -357,6 +367,14 @@ class AgentService:
 
                 # Convert event to chunk for SSE streaming
                 # Use accumulator for on_chat_model_stream events to handle progressive tool calls
+
+                # Filter out internal nodes (generate_title) from streaming to frontend
+                langgraph_node = event.get("metadata", {}).get("langgraph_node", "")
+                if langgraph_node == "generate_title":
+                    # Skip all events from the generate_title node (internal use only)
+                    log.debug("Skipping event from internal node: generate_title")
+                    continue
+
                 if event_type == "on_chat_model_stream":
                     chunks = tool_call_accumulator.process_event(event)
                     for chunk in chunks:
