@@ -241,9 +241,9 @@ Chat API 使用 Server-Sent Events (SSE) 进行流式传输。
 
 | type | 说明 | 包含字段 |
 |------|------|----------|
-| content | AI 文本内容（流式） | content |
-| tool_call | LLM 决定调用工具（可能多个） | tool_calls (数组, 每项包含 id, name, args), session_id |
-| tool_start | 工具开始执行 | tool_name, session_id |
+| content | AI 文本内容（流式） | content, message_id (可选) |
+| tool_call | LLM 决定调用工具（流式，参数逐次累积） | tool_call (对象, 包含 id, type, function), session_id, message_id (可选) |
+| tool_start | 工具开始执行 | tool_name, tool_call_id, session_id |
 | tool_end | 工具执行完成 | tool_name, tool_output, session_id |
 | error | 错误信息 | error, session_id |
 | done | 流结束 | session_id |
@@ -255,33 +255,126 @@ Chat API 使用 Server-Sent Events (SSE) 进行流式传输。
 // AI 文本流式输出
 {"type": "content", "content": "Hello! How can I help"}
 
-// LLM 决定调用工具（单个或多个）
+// LLM 决定调用工具（流式传输，参数逐次累积）
+
+// 第 1 个 chunk：工具调用开始（参数为空）
 {
   "type": "tool_call",
-  "tool_calls": [
-    {
-      "id": "call_123",
-      "name": "execute_multiple_device_commands",
-      "args": {
-        "device_names": ["R1", "R2"],
-        "commands": ["show version"]
-      }
-    }
-  ],
+  "tool_call": {
+    "id": "call_123",
+    "type": "function",
+    "function": {"name": "execute_multiple_device_commands", "arguments": ""}
+  },
   "session_id": "xxx"
 }
 
-// 工具开始执行
-{"type": "tool_start", "tool_name": "execute_multiple_device_commands", "session_id": "xxx"}
+// 第 2 个 chunk：参数累积中
+{
+  "type": "tool_call",
+  "tool_call": {
+    "id": "call_123",
+    "type": "function",
+    "function": {"name": "execute_multiple_device_commands", "arguments": "{\"device_names\": [\"R1\"], "}
+  },
+  "session_id": "xxx"
+}
+
+// 第 3 个 chunk：参数累积中
+{
+  "type": "tool_call",
+  "tool_call": {
+    "id": "call_123",
+    "type": "function",
+    "function": {"name": "execute_multiple_device_commands", "arguments": "{\"device_names\": [\"R1\"], \"commands\": [\"show ver\"]}"}
+  },
+  "session_id": "xxx"
+}
+
+// 第 4 个 chunk：参数完整（标记 complete=true）
+{
+  "type": "tool_call",
+  "tool_call": {
+    "id": "call_123",
+    "type": "function",
+    "function": {
+      "name": "execute_multiple_device_commands",
+      "arguments": "{\"device_names\": [\"R1\"], \"commands\": [\"show ver\"]}",
+      "complete": true
+    }
+  },
+  "session_id": "xxx"
+}
+
+// 工具开始执行（通过 tool_call_id 关联）
+{
+  "type": "tool_start",
+  "tool_name": "execute_multiple_device_commands",
+  "tool_call_id": "call_123",
+  "session_id": "xxx"
+}
 
 // 工具执行完成
-{"type": "tool_end", "tool_name": "execute_multiple_device_commands", "tool_output": "{...}", "session_id": "xxx"}
+{
+  "type": "tool_end",
+  "tool_name": "execute_multiple_device_commands",
+  "tool_output": "{...}",
+  "session_id": "xxx"
+}
 
 // 流结束
 {"type": "done", "session_id": "xxx"}
 
 // 错误
 {"type": "error", "error": "Project not found", "session_id": "xxx"}
+```
+
+### 流式工具调用机制
+
+**背景**：LLM 生成工具调用参数时是逐字符流式输出的，就像文本内容一样。
+
+**实现**：使用 `ToolCallStreamAccumulator` 类维护状态，处理三个阶段：
+
+1. **初始化阶段**：从 `tool_calls` 获取工具 ID 和名称，发送初始 `tool_call` 事件（参数为空）
+
+2. **累积阶段**：从 `tool_call_chunks` 逐个获取参数片段，通过字符串拼接累积完整参数，每次累积后发送更新的 `tool_call` 事件
+
+3. **完成阶段**：检测 `finish_reason == "tool_calls"` 或 `"stop"`，发送最终 `tool_call` 事件（标记 `complete: true`）
+
+**前端处理**：
+- 收到 `tool_call` 事件时，根据 `tool_call.id` 判断是否为新工具调用
+- 同一个 ID 的后续事件用于更新参数显示
+- 当 `function.complete: true` 时，参数已完整，可以执行工具
+- `tool_start` 事件包含 `tool_call_id`，可以关联到之前的 `tool_call` 事件
+
+**示例代码**（前端）：
+```javascript
+// 维护当前工具调用状态
+let currentToolCall = null;
+
+function handleToolCallEvent(chunk) {
+  const toolCall = chunk.tool_call;
+
+  if (!currentToolCall || currentToolCall.id !== toolCall.id) {
+    // 新工具调用
+    currentToolCall = {
+      id: toolCall.id,
+      name: toolCall.function.name,
+      arguments: toolCall.function.arguments,
+      complete: toolCall.function.complete || false
+    };
+    displayToolCallStarted(currentToolCall);
+  } else {
+    // 更新现有工具调用的参数
+    currentToolCall.arguments = toolCall.function.arguments;
+    currentToolCall.complete = toolCall.function.complete || false;
+    updateToolCallArguments(currentToolCall);
+  }
+
+  if (currentToolCall.complete) {
+    // 参数完整，准备执行工具
+    displayToolCallReady(currentToolCall);
+  }
+}
 ```
 
 ### 心跳机制

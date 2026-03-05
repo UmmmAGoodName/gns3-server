@@ -178,7 +178,7 @@ class ExecuteMultipleDeviceCommands(BaseTool):
             List[Dict[str, Any]]: A list of dictionaries containing device names and command outputs.
         """
         # Log received input
-        logger.info("Received input: %s", tool_input)
+        logger.debug("Received input: %s", tool_input)
 
         # Validate input
         device_configs_list, project_id = self._validate_tool_input(tool_input)
@@ -219,7 +219,7 @@ class ExecuteMultipleDeviceCommands(BaseTool):
             logger.error("Error executing display on all devices: %s", e)
             return [{"error": f"Execution error: {str(e)}"}]
 
-        logger.info(
+        logger.debug(
             "Multiple device display execution completed. Results: %s",
             json.dumps(results, indent=2, ensure_ascii=False),
         )

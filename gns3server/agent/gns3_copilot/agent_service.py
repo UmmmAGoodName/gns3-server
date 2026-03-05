@@ -59,6 +59,9 @@ from gns3server.agent.gns3_copilot.gns3_client.context_helpers import (
 from gns3server.agent.gns3_copilot.utils.message_converters import (
     convert_langchain_to_openai,
 )
+from gns3server.agent.gns3_copilot.utils.tool_call_stream import (
+    ToolCallStreamAccumulator,
+)
 
 log = logging.getLogger(__name__)
 
@@ -294,6 +297,9 @@ class AgentService:
         ai_response_counted = False
         tool_messages_counted = 0
 
+        # Initialize tool call stream accumulator for handling progressive tool call arguments
+        tool_call_accumulator = ToolCallStreamAccumulator()
+
         # Stream events
         try:
             async for event in graph.astream_events(inputs, config=config, version="v2"):
@@ -350,10 +356,20 @@ class AgentService:
                     log.debug("Tool message counted, message_count=%d", message_count)
 
                 # Convert event to chunk for SSE streaming
-                chunk = self._convert_event_to_chunk(event, session_id)
-                if chunk:
-                    log.debug("Yielding chunk: type=%s", chunk.get("type"))
-                    yield chunk
+                # Use accumulator for on_chat_model_stream events to handle progressive tool calls
+                if event_type == "on_chat_model_stream":
+                    chunks = tool_call_accumulator.process_event(event)
+                    for chunk in chunks:
+                        # Add session_id to each chunk
+                        chunk["session_id"] = session_id
+                        log.debug("Yielding accumulated chunk: type=%s", chunk.get("type"))
+                        yield chunk
+                else:
+                    # Use stateless converter for other events
+                    chunk = self._convert_event_to_chunk(event, session_id)
+                    if chunk:
+                        log.debug("Yielding chunk: type=%s", chunk.get("type"))
+                        yield chunk
 
             # Update session statistics after successful stream
             await repo.update_session(
@@ -398,43 +414,24 @@ class AgentService:
 
         Returns:
             Dict for SSE response or None if event should be filtered
+
+        Note:
+            on_chat_model_stream events are handled by ToolCallStreamAccumulator
+            before calling this method, so they are not processed here.
         """
         event_type = event.get("event", "")
         data = event.get("data", {})
 
-        if event_type == "on_chat_model_stream":
-            # Streaming text content from LLM
-            chunk = data.get("chunk", {})
-            # chunk is AIMessageChunk object, access content directly
-            content = getattr(chunk, "content", "")
-            if content:
-                return {"type": "content", "content": content}
-
-        elif event_type == "on_chat_model_end":
-            # LLM call completed, check if it decided to call tools
-            output = data.get("output", {})
-            if hasattr(output, "tool_calls") and output.tool_calls:
-                # Extract tool calls information
-                tool_calls_data = []
-                for tc in output.tool_calls:
-                    # Convert to dict if it's an object
-                    tc_dict = tc if isinstance(tc, dict) else tc.model_dump()
-                    tool_calls_data.append(
-                        {
-                            "id": tc_dict.get("id", ""),
-                            "name": tc_dict.get("name", ""),
-                            "args": tc_dict.get("args", {}),
-                        }
-                    )
-                return {
-                    "type": "tool_call",
-                    "tool_calls": tool_calls_data,
-                    "session_id": session_id,
-                }
-
-        elif event_type == "on_tool_start":
+        if event_type == "on_tool_start":
             # Tool execution started
-            return {"type": "tool_start", "tool_name": event.get("name", ""), "session_id": session_id}
+            # Extract tool_call_id from event metadata to associate with tool_call event
+            tool_call_id = event.get("metadata", {}).get("tool_call_id", "")
+            return {
+                "type": "tool_start",
+                "tool_name": event.get("name", ""),
+                "tool_call_id": tool_call_id,
+                "session_id": session_id,
+            }
 
         elif event_type == "on_tool_end":
             # Tool execution completed
