@@ -17,6 +17,9 @@
 # You should have received a copy of the GNU General Public License
 # along with GNS3-Copilot. If not, see <https://www.gnu.org/licenses/>.
 #
+# Copyright (C) 2025 Guobin Yue
+# Author: Guobin Yue
+#
 # Project Home: https://github.com/yueguobin/gns3-copilot
 #
 """
