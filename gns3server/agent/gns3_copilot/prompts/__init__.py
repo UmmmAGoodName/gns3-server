@@ -31,7 +31,7 @@ the GNS3-Copilot AI agent.
 
 Available prompts:
 - base_prompt: Teaching assistant mode (diagnostics only, no configuration)
-- lab_assistant_prompt: Full lab assistant mode (diagnostics + configuration)
+- lab_assistant_prompt: Lab automation assistant mode (diagnostics + configuration)
 
 """
 

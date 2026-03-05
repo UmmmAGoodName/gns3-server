@@ -30,8 +30,8 @@ This module provides utilities for loading system prompts.
 Supports multiple prompt variants based on LLM model configuration.
 
 Available Modes (controlled by config.copilot_mode in llm_model_configs):
-- "teaching" (default): Teaching assistant mode - diagnostics only, no configuration
-- "lab_assistant": Full lab assistant mode - diagnostics and configuration enabled
+- "teaching_assistant" (default): Teaching assistant mode - diagnostics only, no configuration
+- "lab_automation_assistant": Full lab automation assistant mode - diagnostics and configuration enabled
 
 """
 
@@ -48,8 +48,8 @@ def load_system_prompt(llm_config: dict | None = None) -> str:
     Load the system prompt for GNS3-Copilot.
 
     The prompt mode is controlled by the `copilot_mode` field in the LLM model config:
-    - "teaching" (default): Teaching assistant mode - diagnostics only, no configuration
-    - "lab_assistant": Full lab assistant mode - diagnostics and configuration enabled
+    - "teaching_assistant" (default): Teaching assistant mode - diagnostics only, no configuration
+    - "lab_automation_assistant": Full lab automation assistant mode - diagnostics and configuration enabled
 
     Args:
         llm_config: LLM model configuration dictionary (flattened structure from get_user_llm_config_full)
@@ -58,16 +58,16 @@ def load_system_prompt(llm_config: dict | None = None) -> str:
         str: The system prompt string.
     """
     if not llm_config:
-        logger.info("No LLM config provided, using default TEACHING assistant prompt mode")
+        logger.info("No LLM config provided, using default TEACHING_ASSISTANT prompt mode")
         return SYSTEM_PROMPT
 
     # llm_config is a flattened dict with copilot_mode at the top level
     # Example: {"provider": "...", "model": "...", "copilot_mode": "...", ...}
-    mode = llm_config.get("copilot_mode", "teaching").lower()
+    mode = llm_config.get("copilot_mode", "teaching_assistant").lower()
 
-    if mode == "lab_assistant":
-        logger.info("Using LAB_ASSISTANT prompt mode (diagnostics + configuration)")
+    if mode == "lab_automation_assistant":
+        logger.info("Using LAB_AUTOMATION_ASSISTANT prompt mode (diagnostics + configuration)")
         return LAB_ASSISTANT_PROMPT
     else:
-        logger.info("Using TEACHING assistant prompt mode (diagnostics only)")
+        logger.info("Using TEACHING_ASSISTANT prompt mode (diagnostics only)")
         return SYSTEM_PROMPT

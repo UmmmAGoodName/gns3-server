@@ -33,10 +33,14 @@ an AI-powered assistant for GNS3 network automation and management.
 
 The agent provides:
 - LangGraph-based state management and workflow
-- Tool orchestration for GNS3 operations
+- Mode-aware tool orchestration for GNS3 operations
 - Context-aware conversation handling
 - Automatic conversation title generation
 - Integration with GNS3 topology management
+
+Copilot Modes:
+- "teaching_assistant" (default): Diagnostic tools only, no configuration changes
+- "lab_automation_assistant": Full diagnostic and configuration tools
 
 """
 
@@ -84,20 +88,36 @@ logger = logging.getLogger(__name__)
 # Note: LLM model configuration is now managed by the new llm_model_configs system.
 # The model_factory module handles model creation with configuration from the database.
 
-# Define the available tools for the agent
-tools = [
+# Define tools for different copilot modes
+# Teaching assistant mode: READ-ONLY diagnostic tools only
+TEACHING_ASSISTANT_MODE_TOOLS = [
     GNS3TemplateTool(),  # Get GNS3 node templates
     GNS3CreateNodeTool(),  # Create new nodes in GNS3
     GNS3LinkTool(),  # Create links between nodes
     GNS3StartNodeTool(),  # Start GNS3 nodes
     GNS3UpdateNodeNameTool(),  # Update node name
-    ExecuteMultipleDeviceCommands(),  # Execute show/display/debug commands on multiple devices (READ-ONLY)
-    ExecuteMultipleDeviceConfigCommands(),  # Execute configuration commands on multiple devices
+    ExecuteMultipleDeviceCommands(),  # Execute show/display/debug commands (READ-ONLY)
+]
+
+# Lab automation assistant mode: Full diagnostic AND configuration tools
+LAB_AUTOMATION_ASSISTANT_MODE_TOOLS = [
+    GNS3TemplateTool(),  # Get GNS3 node templates
+    GNS3CreateNodeTool(),  # Create new nodes in GNS3
+    GNS3LinkTool(),  # Create links between nodes
+    GNS3StartNodeTool(),  # Start GNS3 nodes
+    GNS3UpdateNodeNameTool(),  # Update node name
+    ExecuteMultipleDeviceCommands(),  # Execute show/display/debug commands (READ-ONLY)
+    ExecuteMultipleDeviceConfigCommands(),  # Execute configuration commands
     VPCSMultiCommands(),  # Execute VPCS commands on multiple devices
 ]
-# Augment the LLM with tools
-tools_by_name = {tool.name: tool for tool in tools}
-# Model with tools will be created dynamically by the factory when needed
+
+# Default tools (legacy support - will be overridden by mode-specific tools)
+tools = LAB_AUTOMATION_ASSISTANT_MODE_TOOLS
+
+# Create combined tool lookup for tool_node (supports both modes)
+# tool_node will receive tool calls based on mode-specific tools bound to the model
+ALL_TOOLS = LAB_AUTOMATION_ASSISTANT_MODE_TOOLS
+tools_by_name = {tool.name: tool for tool in ALL_TOOLS}
 
 # Log application startup
 logger.info("GNS3-Copilot application starting up")
@@ -203,6 +223,15 @@ def llm_call(state: dict, config: RunnableConfig | None = None):
     # Store topology_info in state for pre_model_hook to access
     state["topology_info"] = topology_info
 
+    # Select tools based on copilot_mode
+    copilot_mode = llm_config.get("copilot_mode", "teaching_assistant").lower()
+    if copilot_mode == "lab_automation_assistant":
+        mode_tools = LAB_AUTOMATION_ASSISTANT_MODE_TOOLS
+        logger.info("Using LAB_AUTOMATION_ASSISTANT mode tools (includes configuration tools)")
+    else:  # teaching_assistant mode (default)
+        mode_tools = TEACHING_ASSISTANT_MODE_TOOLS
+        logger.info("Using TEACHING_ASSISTANT mode tools (diagnostic tools only)")
+
     # Create pre_model_hook for automatic topology injection and trimming
     # Load system prompt based on copilot_mode configuration
     system_prompt = load_system_prompt(llm_config)
@@ -210,14 +239,18 @@ def llm_call(state: dict, config: RunnableConfig | None = None):
         system_prompt=system_prompt,
         get_topology_func=lambda s: s.get("topology_info"),
         get_llm_config_func=get_current_llm_config,
-        get_tools_func=lambda: tools,  # Pass tools for token estimation
+        get_tools_func=lambda: mode_tools,  # Pass mode-specific tools for token estimation
     )
 
     # Create fresh model with tools for each LLM call
     logger.debug(
-        "Creating model with tools: provider=%s, model=%s", llm_config.get("provider"), llm_config.get("model")
+        "Creating model with tools: provider=%s, model=%s, mode=%s, tools=%d",
+        llm_config.get("provider"),
+        llm_config.get("model"),
+        copilot_mode,
+        len(mode_tools),
     )
-    model_with_tools = create_base_model_with_tools(tools, llm_config=llm_config)
+    model_with_tools = create_base_model_with_tools(mode_tools, llm_config=llm_config)
 
     # Call pre_hook directly to prepare messages (topology injection + trimming)
     # Note: LangGraph's pre_model_hook only works with prebuilt agents, not custom StateGraph

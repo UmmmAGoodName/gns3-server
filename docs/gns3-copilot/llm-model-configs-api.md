@@ -124,7 +124,7 @@ The `model_type` field accepts the following values:
 | `api_key` | string | API key (auto-encrypted) |
 | `max_tokens` | integer | Max tokens for generation |
 | `context_strategy` | string | Context trimming strategy: "conservative" (60%), "balanced" (75%), "aggressive" (85%). Default: "balanced" |
-| `copilot_mode` | string | GNS3-Copilot mode: "teaching" (diagnostics only, default) or "lab_assistant" (full configuration access) |
+| `copilot_mode` | string | GNS3-Copilot mode: "teaching_assistant" (diagnostics only, default) or "lab_automation_assistant" (full configuration access) |
 | `is_default` | boolean | Set as default (default: false) |
 
 **Important Notes:**
@@ -235,7 +235,7 @@ curl -X POST http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
     "context_limit": 128,
     "context_strategy": "balanced",
     "api_key": "sk-xxx",
-    "copilot_mode": "teaching",
+    "copilot_mode": "teaching_assistant",
     "is_default": true
   }'
 ```
@@ -285,7 +285,7 @@ curl -X POST http://localhost:3080/v3/access/groups/{group_id}/llm-model-configs
     "context_limit": 200,
     "context_strategy": "balanced",
     "api_key": "sk-ant-xxx",
-    "copilot_mode": "lab_assistant",
+    "copilot_mode": "lab_automation_assistant",
     "is_default": true
   }'
 ```
@@ -313,7 +313,7 @@ curl -X GET http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
         "context_limit": 128,
         "context_strategy": "balanced",
         "api_key": "sk-xxx",
-        "copilot_mode": "lab_assistant"
+        "copilot_mode": "lab_automation_assistant"
       },
       "user_id": "uuid-user",
       "group_id": null,

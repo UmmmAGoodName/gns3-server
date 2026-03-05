@@ -50,7 +50,7 @@ class LLMModelConfigData(BaseModel):
     )
     copilot_mode: Optional[str] = Field(
         None,
-        description="GNS3-Copilot mode: 'teaching' (diagnostics only) or 'lab_assistant' (full configuration access)"
+        description="GNS3-Copilot mode: 'teaching_assistant' (diagnostics only) or 'lab_automation_assistant' (full configuration access)"
     )
 
     # Allow extra fields for extensibility
@@ -78,7 +78,7 @@ class LLMModelConfigCreate(BaseModel):
     )
     copilot_mode: Optional[str] = Field(
         None,
-        description="GNS3-Copilot mode: 'teaching' (diagnostics only) or 'lab_assistant' (full configuration access)"
+        description="GNS3-Copilot mode: 'teaching_assistant' (diagnostics only) or 'lab_automation_assistant' (full configuration access)"
     )
 
     # Allow extra config fields
@@ -107,7 +107,7 @@ class LLMModelConfigUpdate(BaseModel):
     )
     copilot_mode: Optional[str] = Field(
         None,
-        description="GNS3-Copilot mode: 'teaching' (diagnostics only) or 'lab_assistant' (full configuration access)"
+        description="GNS3-Copilot mode: 'teaching_assistant' (diagnostics only) or 'lab_automation_assistant' (full configuration access)"
     )
 
     # Allow extra config fields
