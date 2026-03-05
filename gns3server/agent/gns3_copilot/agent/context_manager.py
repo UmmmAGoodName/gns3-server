@@ -515,19 +515,22 @@ def prepare_context_messages(
     # Estimate tool tokens (tools are sent with each LLM call)
     tool_tokens = estimate_tool_tokens(tools) if tools else 0
 
-    # Build base context (system + topology)
-    context_messages = [SystemMessage(content=system_prompt)]
+    # Inject topology info into system prompt using template variable
+    # The system_prompt contains {{topology_info}} placeholder
+    if topology_context:
+        topology_formatted = f"Current Topology:\n{topology_context}"
+        formatted_prompt = system_prompt.replace("{{topology_info}}", topology_formatted)
+    else:
+        # If no topology, remove the placeholder
+        formatted_prompt = system_prompt.replace("{{topology_info}}", "(No topology information available)")
 
     # Calculate token breakdown
     system_prompt_tokens = count_tokens_accurately(system_prompt)
-    topology_tokens = 0
+    topology_tokens = count_tokens_accurately(topology_formatted) if topology_context else 0
+    formatted_tokens = count_tokens_accurately(formatted_prompt)
 
-    if topology_context:
-        topology_context_full = f"Current Topology:\n{topology_context}"
-        topology_tokens = count_tokens_accurately(topology_context_full)
-        context_messages.append(
-            SystemMessage(content=topology_context_full)
-        )
+    # Build context messages (single system message with topology injected)
+    context_messages = [SystemMessage(content=formatted_prompt)]
 
     # Calculate conversation history tokens
     history_tokens = count_messages_tokens(state_messages)
@@ -556,28 +559,30 @@ def prepare_context_messages(
     if trimmed_history_tokens < history_tokens:
         # Trimming happened
         logger.info(
-            "Context prepared (trimmed): system=%d + topology=%d + history=%d→%d + tools=%d = %d total / %dK limit (%.1f%%), strategy=%s",
+            "Context prepared (trimmed): system=%d (base=%d + topology=%d) + history=%d→%d + tools=%d = %d total / %dK limit (%.1f%%), strategy=%s",
+            formatted_tokens,
             system_prompt_tokens,
             topology_tokens,
             history_tokens,
             trimmed_history_tokens,
             tool_tokens,
-            trimmed_total_tokens,
+            formatted_tokens + trimmed_history_tokens + tool_tokens,
             model_limit_k,
-            (trimmed_total_tokens / (model_limit_k * 1000)) * 100,
+            ((formatted_tokens + trimmed_history_tokens) / (model_limit_k * 1000)) * 100,
             trim_strategy
         )
     else:
         # No trimming
         logger.info(
-            "Context prepared: system=%d + topology=%d + history=%d + tools=%d = %d total / %dK limit (%.1f%%), strategy=%s",
+            "Context prepared: system=%d (base=%d + topology=%d) + history=%d + tools=%d = %d total / %dK limit (%.1f%%), strategy=%s",
+            formatted_tokens,
             system_prompt_tokens,
             topology_tokens,
             history_tokens,
             tool_tokens,
-            total_context_tokens,
+            formatted_tokens + history_tokens + tool_tokens,
             model_limit_k,
-            (total_context_tokens / (model_limit_k * 1000)) * 100,
+            (formatted_tokens / (model_limit_k * 1000)) * 100,
             trim_strategy
         )
 

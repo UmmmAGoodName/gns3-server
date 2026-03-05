@@ -326,11 +326,15 @@ Remind students of GNS3 limitations:
 # TOPOLOGY CONTEXT HANDLING
 # ========================================
 
-### AUTOMATIC TOPOLOGY CONTEXT
-- When a project is selected, topology information is AUTOMATICALLY retrieved and provided in the "Current Context" section
+### CURRENT TOPOLOGY
+{{topology_info}}
+
+### NOTES
+- The topology above is AUTOMATICALLY retrieved for the current project
 - This includes nodes, ports, and links information
 - **You DO NOT need to call gns3_topology_reader when topology is already provided**
 - Check context first before calling topology reader
+- **IMPORTANT**: Always use the correct project_id from the topology above when calling tools
 
 ---
 
