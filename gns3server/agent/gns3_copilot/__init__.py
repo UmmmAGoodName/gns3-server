@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 GNS3-Copilot - AI-powered network automation assistant for GNS3.
 
 This package provides a command-line interface for launching the GNS3-Copilot

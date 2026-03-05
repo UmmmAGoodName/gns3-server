@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 This module provides a tool to execute display commands on multiple devices
  in a GNS3 topology using Nornir.
 """
@@ -48,12 +46,10 @@ from gns3server.agent.gns3_copilot.utils import get_device_ports_from_topology
 # config log
 logger = logging.getLogger(__name__)
 
-
 # Local Nornir configuration functions for Cisco IOS Telnet devices
 def _get_nornir_defaults() -> dict[str, Any]:
     """Get Nornir default configuration for Cisco IOS."""
     return {"data": {"location": "gns3"}}
-
 
 def _get_nornir_groups_config() -> dict[str, dict[str, Any]]:
     """Get Nornir groups configuration for Cisco IOS Telnet devices."""
@@ -70,12 +66,10 @@ def _get_nornir_groups_config() -> dict[str, dict[str, Any]]:
         },
     }
 
-
 def _get_nornir_group(group_name: str = "cisco_IOSv_telnet") -> dict[str, Any]:
     """Get Nornir group configuration for a specific group."""
     all_groups = _get_nornir_groups_config()
     return all_groups.get(group_name, {})
-
 
 class ExecuteMultipleDeviceCommands(BaseTool):
     """
@@ -494,7 +488,6 @@ class ExecuteMultipleDeviceCommands(BaseTool):
             results.append(device_result)
 
         return results
-
 
 if __name__ == "__main__":
     # Example usage with new format

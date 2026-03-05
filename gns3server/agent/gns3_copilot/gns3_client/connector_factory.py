@@ -32,8 +32,6 @@ Features:
 - Fallback URL strategy for flexible deployment
 - LLM configuration retrieval for users
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 """
 
 import logging
@@ -47,12 +45,10 @@ logger = logging.getLogger(__name__)
 _jwt_token_context: ContextVar[Optional[str]] = ContextVar("_jwt_token_context", default=None)
 _llm_config_context: ContextVar[Optional[dict]] = ContextVar("_llm_config_context", default=None)
 
-
 def set_current_jwt_token(token: str) -> None:
     """Set the JWT token for the current request context."""
     _jwt_token_context.set(token)
     logger.debug("JWT token set in context")
-
 
 def get_current_jwt_token() -> Optional[str]:
     """Get the JWT token for the current request context."""
@@ -63,13 +59,11 @@ def get_current_jwt_token() -> Optional[str]:
         logger.warning("JWT token not found in context")
     return token
 
-
 def set_current_llm_config(config: dict) -> None:
     """Set the LLM config for the current request context."""
     _llm_config_context.set(config)
     logger.debug("LLM config set in context: provider=%s, model=%s",
                 config.get("provider"), config.get("model"))
-
 
 def get_current_llm_config() -> Optional[dict]:
     """Get the LLM config for the current request context."""
@@ -86,7 +80,6 @@ from gns3server.agent.gns3_copilot.gns3_client.custom_gns3fy import Gns3Connecto
 
 # Fallback default URL
 DEFAULT_GNS3_URL = "http://127.0.0.1:3080"
-
 
 def _get_url_from_controller() -> Optional[str]:
     """Try to get GNS3 server URL from running Controller instance.
@@ -122,7 +115,6 @@ def _get_url_from_controller() -> Optional[str]:
         logger.warning("Unexpected error getting URL from Controller: %s", str(e))
         return None
 
-
 def _get_url_from_config() -> Optional[str]:
     """Try to get GNS3 server URL from Config settings.
 
@@ -151,7 +143,6 @@ def _get_url_from_config() -> Optional[str]:
     except Exception as e:
         logger.warning("Unexpected error getting URL from Config: %s", str(e))
         return None
-
 
 def get_gns3_connector(jwt_token: Optional[str] = None, url: Optional[str] = None) -> Optional[Gns3Connector]:
     """Create and return a Gns3Connector instance with JWT authentication.
@@ -238,7 +229,6 @@ def get_gns3_connector(jwt_token: Optional[str] = None, url: Optional[str] = Non
     except Exception as e:
         logger.error("Failed to create Gns3Connector: %s", str(e), exc_info=True)
         return None
-
 
 async def get_gns3_connector_with_llm_config(
     user_id,
@@ -327,7 +317,6 @@ async def get_gns3_connector_with_llm_config(
         logger.error(f"Failed to get GNS3 connector with LLM config: {e}", exc_info=True)
         return None
 
-
 def _detect_url_for_api() -> Optional[str]:
     """
     Detect GNS3 server URL for API calls.
@@ -357,7 +346,6 @@ def _detect_url_for_api() -> Optional[str]:
     # Fallback
     logger.debug("Using fallback URL for API call: %s", DEFAULT_GNS3_URL)
     return DEFAULT_GNS3_URL
-
 
 def get_gns3_server_host() -> str:
     """
@@ -394,7 +382,6 @@ def get_gns3_server_host() -> str:
     except Exception as e:
         logger.warning("Failed to extract host from URL %s: %s, using fallback", url, e)
         return DEFAULT_GNS3_URL.split("://")[1].split(":")[0]
-
 
 def get_llm_config(user_id, jwt_token: str, app=None) -> Optional[dict]:
     """

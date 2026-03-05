@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 Project Agent Manager
 
 Manages AgentService instances for GNS3 projects using a singleton pattern.
@@ -36,7 +34,6 @@ from typing import Dict, Optional
 from gns3server.agent.gns3_copilot.agent_service import AgentService
 
 log = logging.getLogger(__name__)
-
 
 class ProjectAgentManager:
     """
@@ -124,11 +121,9 @@ class ProjectAgentManager:
         """
         return list(self._agents.keys())
 
-
 # Global singleton instance
 _project_agent_manager: Optional[ProjectAgentManager] = None
 _manager_lock = asyncio.Lock()
-
 
 async def get_project_agent_manager() -> ProjectAgentManager:
     """

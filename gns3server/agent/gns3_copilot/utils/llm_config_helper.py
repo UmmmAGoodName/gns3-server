@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 LLM Model Configuration Helper for GNS3 Copilot
 
 This module provides utility functions to retrieve LLM model configurations
@@ -46,7 +44,6 @@ from uuid import UUID
 from fastapi import FastAPI
 
 logger = logging.getLogger(__name__)
-
 
 async def get_user_llm_config_with_app(
     user_id: UUID,

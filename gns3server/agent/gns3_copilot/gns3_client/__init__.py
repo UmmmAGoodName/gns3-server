@@ -41,9 +41,6 @@ Main functions:
 - get_gns3_server_host: Get GNS3 server hostname from Controller or Config
 - get_llm_config: Get LLM model configuration for a user
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
-
 Upstream gns3fy: https://github.com/davidban77/gns3fy
 """
 

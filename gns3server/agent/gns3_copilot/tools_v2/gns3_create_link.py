@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 GNS3 link creation tool for connecting network nodes.
 
 Provides functionality to create links between nodes in GNS3 projects
@@ -41,7 +39,6 @@ from gns3server.agent.gns3_copilot.gns3_client import Link, get_gns3_connector
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
 
 class GNS3LinkTool(BaseTool):
     """
@@ -248,7 +245,6 @@ class GNS3LinkTool(BaseTool):
         except Exception as e:
             logger.error("Failed to process link creation: %s", e)
             return [{"error": f"Failed to process link creation: {str(e)}"}]
-
 
 if __name__ == "__main__":
     # Test with single link

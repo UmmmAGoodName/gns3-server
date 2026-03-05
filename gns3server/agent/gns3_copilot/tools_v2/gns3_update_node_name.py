@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 GNS3 node name update tool for renaming network devices.
 
 Provides functionality to update the name of one or multiple nodes in GNS3 projects.
@@ -40,7 +38,6 @@ from gns3server.agent.gns3_copilot.gns3_client import Node, get_gns3_connector
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
 
 class GNS3UpdateNodeNameTool(BaseTool):
     """
@@ -204,7 +201,6 @@ class GNS3UpdateNodeNameTool(BaseTool):
         except Exception as e:
             logger.error("Failed to update node names: %s", e)
             return {"error": f"Failed to update node names: {str(e)}"}
-
 
 if __name__ == "__main__":
     # Test with single node

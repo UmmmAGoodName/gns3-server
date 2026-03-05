@@ -28,8 +28,6 @@ to guide network diagnostics and teaching activities.
 
 CRITICAL: This assistant has DIAGNOSIS permissions only, NO configuration permissions.
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 """
 
 # System prompt for LangChain v1.0 agent

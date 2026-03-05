@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 GNS3 node startup tool for network device activation.
 
 Provides functionality to start one or multiple nodes in GNS3 projects
@@ -42,7 +40,6 @@ from gns3server.agent.gns3_copilot.gns3_client import Node, get_gns3_connector
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
 
 def show_progress_bar(
     duration: int = 120, interval: int = 1, node_count: int = 1
@@ -72,7 +69,6 @@ def show_progress_bar(
         time.sleep(interval)
 
     print(f"\n{node_count} node(s) startup completed!")
-
 
 class GNS3StartNodeTool(BaseTool):
     """
@@ -224,7 +220,6 @@ class GNS3StartNodeTool(BaseTool):
             logger.error("Failed to start nodes: %s", e)
             return {"error": f"Failed to start nodes: {str(e)}"}
 
-
 class GNS3StartNodeQuickTool(BaseTool):
     """
     A LangChain tool to start one or multiple nodes in a GNS3 project WITHOUT waiting.
@@ -372,7 +367,6 @@ class GNS3StartNodeQuickTool(BaseTool):
         except Exception as e:
             logger.error("Failed to start nodes: %s", e)
             return {"error": f"Failed to start nodes: {str(e)}"}
-
 
 if __name__ == "__main__":
     # Test with single node

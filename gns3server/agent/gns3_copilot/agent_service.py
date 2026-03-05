@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 GNS3 Copilot Agent Service
 
 Provides project-level Agent instances with SQLite checkpoint management.
@@ -47,7 +45,6 @@ from gns3server.agent.gns3_copilot.chat_sessions_repository import ChatSessionsR
 from gns3server.agent.gns3_copilot.utils.message_converters import convert_langchain_to_openai
 
 log = logging.getLogger(__name__)
-
 
 class AgentService:
     """

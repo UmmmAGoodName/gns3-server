@@ -26,8 +26,6 @@ GNS3-Copilot Agent Package
 This package contains the main GNS3-Copilot agent implementation for
 network automation tasks using LangGraph workflow orchestration.
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 """
 
 from .gns3_copilot import agent_builder

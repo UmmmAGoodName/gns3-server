@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 GNS3-Copilot Tools Package
 
 This package provides various tools for interacting with GNS3 network simulator, including:

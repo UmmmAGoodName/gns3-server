@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 GNS3 template retrieval tool for device discovery.
 
 Provides functionality to retrieve all available device templates
@@ -41,7 +39,6 @@ from gns3server.agent.gns3_copilot.gns3_client import get_gns3_connector
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
 
 class GNS3TemplateTool(BaseTool):
     """
@@ -132,7 +129,6 @@ class GNS3TemplateTool(BaseTool):
                 "Failed to connect to GNS3 server or retrieve templates: %s", e
             )
             return {"error": f"Failed to retrieve templates: {str(e)}"}
-
 
 if __name__ == "__main__":
     # Test's tool locally

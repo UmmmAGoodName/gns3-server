@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 Chat Sessions Repository for managing chat session data.
 
 Provides CRUD operations for the chat_sessions table in the project's
@@ -38,7 +36,6 @@ from uuid import UUID
 import aiosqlite
 
 log = logging.getLogger(__name__)
-
 
 class ChatSession:
     """Chat session model."""
@@ -99,7 +96,6 @@ class ChatSession:
             "stats": json.loads(self.stats) if self.stats else {},
             "pinned": self.pinned,
         }
-
 
 class ChatSessionsRepository:
     """

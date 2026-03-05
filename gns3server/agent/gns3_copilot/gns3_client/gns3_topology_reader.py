@@ -26,8 +26,6 @@ GNS3 Topology Reader Tool
 This module provides a LangChain BaseTool to retrieve the topology of a
 specific GNS3 project by project ID. Returns nodes, links, and project metadata.
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 """
 
 import copy
@@ -40,7 +38,6 @@ from gns3server.agent.gns3_copilot.gns3_client import Project, get_gns3_connecto
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
 
 # Define LangChain tool class
 class GNS3TopologyTool(BaseTool):
@@ -142,7 +139,6 @@ class GNS3TopologyTool(BaseTool):
                     for port in node["ports"]
                 ]
         return data
-
 
 if __name__ == "__main__":
     from pprint import pprint

@@ -35,9 +35,6 @@ Modifications made for GNS3-Copilot:
 Note: This file is adapted from upstream gns3fy for compatibility with
 GNS3-Copilot's architecture.
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
-
 Upstream: https://github.com/davidban77/gns3fy
 """
 
@@ -68,7 +65,6 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 config = ConfigDict(validate_assignment=True, extra="ignore")
 
-
 NODE_TYPES = [
     "cloud",
     "nat",
@@ -98,7 +94,6 @@ CONSOLE_TYPES = [
 ]
 
 LINK_TYPES = ["ethernet", "serial"]
-
 
 class Gns3Connector:
     """
@@ -730,7 +725,6 @@ class Gns3Connector:
 
         return cast(dict[str, Any], _response_data)
 
-
 def verify_connector_and_id(f: F) -> F:
     """
     Main checker for connector object and respective object's ID for their retrieval
@@ -772,7 +766,6 @@ def verify_connector_and_id(f: F) -> F:
         return f(self, *args, **kwargs)
 
     return cast(F, wrapper)
-
 
 @dataclass(config=config)
 class Link:
@@ -972,7 +965,6 @@ class Link:
 
         # Update object
         self._update(_response.json())
-
 
 @dataclass(config=config)
 class Node:
@@ -1500,7 +1492,6 @@ class Node:
         _url = f"{_conn.base_url}/projects/{_project_id}/nodes/{_node_id}/files/{path}"
 
         _conn.http_call("post", _url, data=data)
-
 
 @dataclass(config=config)
 class Project:

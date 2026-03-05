@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 Multi-device VPCS command execution tool using telnetlib3 with threading.
 Supports concurrent execution of multiple command groups across multiple VPCS devices.
 """
@@ -43,7 +41,6 @@ from gns3server.agent.gns3_copilot.gns3_client import get_gns3_server_host
 from gns3server.agent.gns3_copilot.utils import get_device_ports_from_topology
 
 logger = logging.getLogger(__name__)
-
 
 class VPCSMultiCommands(BaseTool):
     """
@@ -425,7 +422,6 @@ class VPCSMultiCommands(BaseTool):
         )
 
         return results
-
 
 if __name__ == "__main__":
     # Example usage

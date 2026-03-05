@@ -26,8 +26,6 @@ Title Generation Prompt for GNS3-Copilot
 Prompt template for generating conversation titles.
 Generates concise Chinese or English titles based on conversation language.
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 """
 
 TITLE_PROMPT = """

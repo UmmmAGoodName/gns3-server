@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 GNS3-Copilot Public Model Package
 
 This package provides reusable public models and utilities for GNS3 network automation tasks.
@@ -54,7 +52,6 @@ except Exception:
 __author__ = "Guobin Yue"
 __description__ = "AI-powered network automation assistant for GNS3"
 __url__ = "https://github.com/yueguobin/gns3-copilot"
-
 
 # Export main utility functions
 __all__ = [

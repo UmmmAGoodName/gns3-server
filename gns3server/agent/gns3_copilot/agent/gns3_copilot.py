@@ -35,8 +35,6 @@ The agent provides:
 - Automatic conversation title generation
 - Integration with GNS3 topology management
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 """
 
 import operator
@@ -101,7 +99,6 @@ DEFAULT_CONVERSATION_TITLE = "New Conversation"
 UNTITLED_SESSION_FALLBACK = "Untitled Session"
 TITLE_MAX_LENGTH = 40
 
-
 # Define state
 class MessagesState(TypedDict):
     """
@@ -129,7 +126,6 @@ class MessagesState(TypedDict):
 
     # Store GNS3 topology information
     topology_info: dict | None
-
 
 # Define llm call  node
 def llm_call(state: dict, config: RunnableConfig | None = None):
@@ -232,7 +228,6 @@ def llm_call(state: dict, config: RunnableConfig | None = None):
         "topology_info": topology_info,
     }
 
-
 # Define generate title node
 def generate_title(state: MessagesState, config: RunnableConfig | None = None) -> dict:
     """
@@ -317,7 +312,6 @@ def generate_title(state: MessagesState, config: RunnableConfig | None = None) -
     # Title already exists → no update needed
     return {}
 
-
 # Define tool node
 def tool_node(state: dict, config: RunnableConfig | None = None):
     """Performs the tool call"""
@@ -344,7 +338,6 @@ def tool_node(state: dict, config: RunnableConfig | None = None):
         ))
     return {"messages": result}
 
-
 # Routing logic after the LLM node
 def should_continue(
     state: MessagesState,
@@ -369,7 +362,6 @@ def should_continue(
 
     # Normal completion (multi-turn conversation or title already exists)
     return END
-
 
 # Routing logic after the tool node, Check remaining_steps
 def recursion_limit_continue(state: MessagesState) -> Literal["llm_call", END]:
@@ -396,7 +388,6 @@ def recursion_limit_continue(state: MessagesState) -> Literal["llm_call", END]:
         return "llm_call"
 
     return END
-
 
 # Build and compile the agent
 # Build workflow

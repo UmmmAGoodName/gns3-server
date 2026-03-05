@@ -17,8 +17,6 @@
 
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 Message format converters for OpenAI-compatible message format.
 Converts between LangChain messages and OpenAI-compatible format.
 """
@@ -26,7 +24,6 @@ import json
 import uuid
 from datetime import datetime
 from typing import Dict, Any
-
 
 def _ensure_string(content: Any) -> str:
     """Ensure content is a string, converting dicts/lists to JSON if needed."""
@@ -36,7 +33,6 @@ def _ensure_string(content: Any) -> str:
         return json.dumps(content, ensure_ascii=False, indent=2)
     else:
         return str(content)
-
 
 def convert_langchain_to_openai(lc_message) -> Dict[str, Any]:
     """
@@ -126,7 +122,6 @@ def convert_langchain_to_openai(lc_message) -> Dict[str, Any]:
             "content": str(lc_message)
         }
 
-
 def convert_openai_to_langchain(msg: Dict[str, Any]):
     """
     Convert OpenAI-compatible format to LangChain message.
@@ -174,7 +169,6 @@ def convert_openai_to_langchain(msg: Dict[str, Any]):
     else:
         # Fallback to HumanMessage for unknown roles
         return HumanMessage(content=content)
-
 
 def convert_stream_event_to_openai(event: Dict[str, Any]) -> Dict[str, Any]:
     """

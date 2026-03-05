@@ -26,8 +26,6 @@ Prompts Module for GNS3-Copilot
 This package contains system prompts and prompt loading utilities for
 the GNS3-Copilot AI agent.
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 """
 
 from .base_prompt import SYSTEM_PROMPT

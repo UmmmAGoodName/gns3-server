@@ -26,8 +26,6 @@ Model Factory for GNS3-Copilot Agent
 This module provides factory functions to create fresh LLM model instances.
 Configuration is passed directly from the database.
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 """
 
 import logging
@@ -36,7 +34,6 @@ from typing import Any, Optional
 from langchain.chat_models import init_chat_model
 
 logger = logging.getLogger(__name__)
-
 
 def _load_llm_config(
     llm_config: Optional[dict[str, Any]] = None,
@@ -69,7 +66,6 @@ def _load_llm_config(
         "base_url": llm_config.get("base_url", ""),
         "temperature": str(llm_config.get("temperature", "0")),
     }
-
 
 def create_base_model(
     llm_config: Optional[dict[str, Any]] = None,
@@ -123,7 +119,6 @@ def create_base_model(
     except Exception as e:
         logger.error("Failed to create base model: %s", e)
         raise RuntimeError(f"Failed to create base model: {e}") from e
-
 
 def create_title_model(
     llm_config: Optional[dict[str, Any]] = None,
@@ -180,7 +175,6 @@ def create_title_model(
         logger.error("Failed to create title model: %s", e)
         raise RuntimeError(f"Failed to create title model: {e}") from e
 
-
 def create_model_with_tools(
     model: Any,
     tools: list[Any],
@@ -205,7 +199,6 @@ def create_model_with_tools(
     except Exception as e:
         logger.error("Failed to bind tools to model: %s", e)
         raise RuntimeError(f"Failed to bind tools to model: {e}") from e
-
 
 def create_base_model_with_tools(
     tools: list[Any],

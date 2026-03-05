@@ -27,8 +27,6 @@ This module provides a LangChain BaseTool to retrieve basic information of a
 specific GNS3 project by project ID. Returns project name, status, node count,
 and link count.
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 """
 
 import logging
@@ -40,7 +38,6 @@ from gns3server.agent.gns3_copilot.gns3_client import Project, get_gns3_connecto
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
 
 class GNS3ProjectInfoTool(BaseTool):
     """LangChain tool for retrieving GNS3 project basic information."""
@@ -132,7 +129,6 @@ class GNS3ProjectInfoTool(BaseTool):
         except Exception as e:
             logger.error("Error retrieving GNS3 project info: %s", str(e))
             return {"error": f"Failed to retrieve project info: {str(e)}"}
-
 
 if __name__ == "__main__":
     from pprint import pprint

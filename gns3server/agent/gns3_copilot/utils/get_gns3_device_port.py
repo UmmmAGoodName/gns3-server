@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 Public module for getting device port information from GNS3 topology
 """
 
@@ -30,7 +28,6 @@ import logging
 from typing import Any
 
 logger = logging.getLogger(__name__)
-
 
 def get_device_ports_from_topology(
     device_names: list[str],

@@ -32,8 +32,6 @@ including:
 - Tool definition token estimation
 - Template variable injection for topology info
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 """
 
 import json
@@ -49,7 +47,6 @@ from langchain_core.messages import (
 
 logger = logging.getLogger(__name__)
 
-
 # ============================================================================
 # Constants
 # ============================================================================
@@ -63,14 +60,12 @@ CONTEXT_STRATEGY_RATIOS = {
 
 DEFAULT_CONTEXT_STRATEGY = "balanced"
 
-
 # ============================================================================
 # Token Counting - Using tiktoken for accuracy
 # ============================================================================
 
 # Global tiktoken encoding cache (lazy loading)
 _tiktoken_encoding = None
-
 
 def _get_tiktoken_encoding():
     """
@@ -98,7 +93,6 @@ def _get_tiktoken_encoding():
             )
     return _tiktoken_encoding
 
-
 def count_tokens_accurately(text: str) -> int:
     """
     Count tokens in text accurately using tiktoken.
@@ -122,7 +116,6 @@ def count_tokens_accurately(text: str) -> int:
         logger.error("tiktoken encoding failed: %s", e)
         raise
 
-
 def count_messages_tokens(messages: list[Any]) -> int:
     """
     Count total tokens in a list of messages accurately.
@@ -143,7 +136,6 @@ def count_messages_tokens(messages: list[Any]) -> int:
             content = str(msg.content)
             total += count_tokens_accurately(content)
     return total
-
 
 # ============================================================================
 # Tool Definition Token Estimation
@@ -208,7 +200,6 @@ def estimate_tool_tokens(tools: list[Any]) -> int:
     logger.info("Tool definitions estimated at ~%d total tokens (%d tools)", total_tokens, len(tools))
     return total_tokens
 
-
 # ============================================================================
 # Model Context Limits
 # ============================================================================
@@ -226,7 +217,6 @@ def estimate_tool_tokens(tools: list[Any]) -> int:
 # - DeepSeek Chat: 128K tokens
 #
 # Always verify current limits from official provider documentation.
-
 
 def get_model_context_limit(
     model_name: str,
@@ -277,7 +267,6 @@ def get_model_context_limit(
         f"Refer to the model provider's documentation for the current context window size."
     )
 
-
 def calculate_max_tokens(
     model_limit: int,
     strategy: Literal["conservative", "balanced", "aggressive"] = DEFAULT_CONTEXT_STRATEGY
@@ -304,7 +293,6 @@ def calculate_max_tokens(
     )
 
     return max_tokens
-
 
 # ============================================================================
 # Message Trimming
@@ -414,7 +402,6 @@ def trim_messages_for_context(
 
     return trimmed
 
-
 def _trim_to_token_limit(messages: list[Any], max_tokens: int) -> list[Any]:
     """
     Trim messages to fit within token limit using tiktoken.
@@ -447,7 +434,6 @@ def _trim_to_token_limit(messages: list[Any], max_tokens: int) -> list[Any]:
         trimmed = [messages[-1]]
 
     return trimmed
-
 
 # ============================================================================
 # Token Usage Summary
@@ -503,7 +489,6 @@ def get_token_usage_summary(
         "message_count": len(messages),
         "needs_trimming": usage_percentage > 80,
     }
-
 
 # ============================================================================
 # Main Entry Point - Context Preparation with Template Injection
@@ -633,7 +618,6 @@ def prepare_context_messages(
         )
 
     return trimmed_messages
-
 
 # ============================================================================
 # Module Test

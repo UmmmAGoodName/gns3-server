@@ -21,8 +21,6 @@
 #
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 Drawing utility functions for GNS3 area annotations.
 
 Calculates drawing parameters and generates SVG content for network area annotations.
@@ -101,7 +99,6 @@ COLOR_SCHEMES = {
         "fill_opacity": 0.8,  # Transparency level
     },
 }
-
 
 def calculate_two_node_shape(
     node1: dict,
@@ -241,7 +238,6 @@ def calculate_two_node_shape(
         "metadata": metadata,
     }
 
-
 def generate_ellipse_svg(
     rx: int,
     ry: int,
@@ -252,7 +248,6 @@ def generate_ellipse_svg(
     """Generate SVG for ellipse."""
     return f'''<svg width="{svg_width}" height="{svg_height}"><ellipse cx="{rx}" cy="{ry}" rx="{rx}" ry="{ry}" fill="{color_scheme["fill"]}" fill-opacity="{color_scheme["fill_opacity"]}"/></svg>'''
 
-
 def generate_rectangle_svg(
     width: int,
     height: int,
@@ -261,14 +256,12 @@ def generate_rectangle_svg(
     """Generate SVG for rectangle."""
     return f'''<svg width="{width}" height="{height}"><rect x="0" y="0" width="{width}" height="{height}" fill="{color_scheme["fill"]}" fill-opacity="{color_scheme["fill_opacity"]}"/></svg>'''
 
-
 def generate_text_svg(text: str, color_scheme: dict[str, Any]) -> str:
     """Generate SVG for text label."""
     text_width = len(text) * 8 + 20
     text_height = DEFAULT_FONT_SIZE + 16
 
     return f'''<svg width="{text_width}" height="{text_height}"><text font-family="TypeWriter" font-size="{DEFAULT_FONT_SIZE}.0" font-weight="bold" fill="{color_scheme["stroke"]}" text-anchor="middle" x="{text_width / 2}" y="{text_height / 2 + 4}">{text}</text></svg>'''
-
 
 def _hsv_to_hex(h: int, s: int, v: int) -> str:
     """Convert HSV to HEX color."""
@@ -303,7 +296,6 @@ def _hsv_to_hex(h: int, s: int, v: int) -> str:
 
     return f"#{r:02x}{g:02x}{b:02x}"
 
-
 def calculate_z_order(area_size: float) -> int:
     """
     Calculate z-order based on area size for proper layering.
@@ -320,7 +312,6 @@ def calculate_z_order(area_size: float) -> int:
         return 2
     else:
         return 3
-
 
 def _get_color_scheme(area_name: str) -> dict[str, Any]:
     """
@@ -410,7 +401,6 @@ def _get_color_scheme(area_name: str) -> dict[str, Any]:
 
     return COLOR_SCHEMES["DEFAULT"]
 
-
 def calculate_two_node_ellipse(
     node1: dict,
     node2: dict,
@@ -430,7 +420,6 @@ def calculate_two_node_ellipse(
         "text": result["text"],
         "metadata": result["metadata"],
     }
-
 
 def calculate_two_node_rectangle(
     node1: dict,

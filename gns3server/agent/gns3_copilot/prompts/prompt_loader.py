@@ -27,8 +27,6 @@ This module provides utilities for loading system prompts.
 Can be extended to support multiple prompt variants based on
 environment variables (e.g., ENGLISH_LEVEL).
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
 """
 
 import logging
@@ -37,7 +35,6 @@ import os
 from .base_prompt import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
-
 
 def load_system_prompt() -> str:
     """

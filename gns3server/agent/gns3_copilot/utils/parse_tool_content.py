@@ -60,16 +60,12 @@ Standard Tool Response Format:
 Author: Guobin Yue
 """
 
-This module is part of the GNS3-Copilot project.
-GitHub: https://github.com/yueguobin/gns3-copilot
-
 import ast
 import json
 import logging
 from typing import Any
 
 logger = logging.getLogger(__name__)
-
 
 def parse_tool_content(
     content: str | dict | list | int | float | bool | None,
@@ -227,7 +223,6 @@ def parse_tool_content(
     logger.info("Returning error: %s", result)
     return result
 
-
 def format_tool_response(
     content: str | dict | list | int | float | bool | None, indent: int = 2
 ) -> str:
@@ -276,7 +271,6 @@ def format_tool_response(
         result = json.dumps({"error": str(e)}, ensure_ascii=False, indent=indent)
         logger.info("format_tool_response returning error: %s", result)
         return result
-
 
 def normalize_tool_response(
     response: dict | list | str,
@@ -456,7 +450,6 @@ def normalize_tool_response(
         "metadata": metadata
     }
 
-
 # Test function to verify the implementation
 def _test_parse_tool_content() -> None:
     """Test function to verify parse_tool_content works correctly with all input types"""
@@ -514,7 +507,6 @@ def _test_parse_tool_content() -> None:
         except Exception:
             valid = "✗"
         print(f"Format Test {i + 1}: {valid} Input: {repr(input_data)} -> {result}")
-
 
 if __name__ == "__main__":
     _test_parse_tool_content()
