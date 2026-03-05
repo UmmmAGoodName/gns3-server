@@ -45,6 +45,10 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 from gns3server.agent.gns3_copilot.agent.gns3_copilot import agent_builder
 from gns3server.agent.gns3_copilot.chat_sessions_repository import ChatSessionsRepository
+from gns3server.agent.gns3_copilot.gns3_client.context_helpers import (
+    set_current_jwt_token,
+    set_current_llm_config,
+)
 from gns3server.agent.gns3_copilot.utils.message_converters import convert_langchain_to_openai
 
 log = logging.getLogger(__name__)
@@ -239,11 +243,9 @@ class AgentService:
 
         # Set request-scoped context variables (memory-only, not persisted)
         if jwt_token:
-            from gns3server.agent.gns3_copilot.gns3_client import set_current_jwt_token
             set_current_jwt_token(jwt_token)
             log.debug("JWT token set in context")
         if llm_config:
-            from gns3server.agent.gns3_copilot.gns3_client import set_current_llm_config
             set_current_llm_config(llm_config)
             log.debug("LLM config set in context: provider=%s, model=%s",
                        llm_config.get("provider"), llm_config.get("model"))

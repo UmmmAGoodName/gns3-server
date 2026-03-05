@@ -66,6 +66,9 @@ from gns3server.agent.gns3_copilot.agent.model_factory import (
     create_title_model,
 )
 from gns3server.agent.gns3_copilot.gns3_client import GNS3TopologyTool
+from gns3server.agent.gns3_copilot.gns3_client.context_helpers import (
+    get_current_llm_config,
+)
 from gns3server.agent.gns3_copilot.prompts import TITLE_PROMPT, load_system_prompt
 from gns3server.agent.gns3_copilot.tools_v2 import (
     ExecuteMultipleDeviceConfigCommands,
@@ -148,7 +151,6 @@ def llm_call(state: dict, config: RunnableConfig | None = None):
     logger.info("LLM call node invoked")
 
     # Get llm_config from request-scoped context variable
-    from gns3server.agent.gns3_copilot.gns3_client import get_current_llm_config
     llm_config = get_current_llm_config()
 
     if not llm_config:
@@ -246,7 +248,6 @@ def generate_title(state: MessagesState, config: RunnableConfig | None = None) -
     """
 
     # Get llm_config from request-scoped context variable
-    from gns3server.agent.gns3_copilot.gns3_client import get_current_llm_config
     llm_config = get_current_llm_config()
 
     if not llm_config:

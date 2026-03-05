@@ -42,49 +42,19 @@ import asyncio
 import concurrent.futures
 import logging
 import threading
-from contextvars import ContextVar
 from typing import Optional
 from uuid import UUID
 
 # Local imports
 from gns3server.agent.gns3_copilot.gns3_client.custom_gns3fy import Gns3Connector
+from gns3server.agent.gns3_copilot.gns3_client.context_helpers import (
+    get_current_jwt_token,
+    get_current_llm_config,
+    set_current_jwt_token,
+    set_current_llm_config,
+)
 
 logger = logging.getLogger(__name__)
-
-# Context variables for request-scoped data
-# Automatically cleaned up when request context ends
-_jwt_token_context: ContextVar[Optional[str]] = ContextVar("_jwt_token_context", default=None)
-_llm_config_context: ContextVar[Optional[dict]] = ContextVar("_llm_config_context", default=None)
-
-def set_current_jwt_token(token: str) -> None:
-    """Set the JWT token for the current request context."""
-    _jwt_token_context.set(token)
-    logger.debug("JWT token set in context")
-
-def get_current_jwt_token() -> Optional[str]:
-    """Get the JWT token for the current request context."""
-    token = _jwt_token_context.get()
-    if token:
-        logger.debug("JWT token retrieved from context")
-    else:
-        logger.warning("JWT token not found in context")
-    return token
-
-def set_current_llm_config(config: dict) -> None:
-    """Set the LLM config for the current request context."""
-    _llm_config_context.set(config)
-    logger.debug("LLM config set in context: provider=%s, model=%s",
-                config.get("provider"), config.get("model"))
-
-def get_current_llm_config() -> Optional[dict]:
-    """Get the LLM config for the current request context."""
-    config = _llm_config_context.get()
-    if config:
-        logger.debug("LLM config retrieved from context: provider=%s, model=%s",
-                    config.get("provider"), config.get("model"))
-    else:
-        logger.warning("LLM config not found in context")
-    return config
 
 # Fallback default URL
 DEFAULT_GNS3_URL = "http://127.0.0.1:3080"

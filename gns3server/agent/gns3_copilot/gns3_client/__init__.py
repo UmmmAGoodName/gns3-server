@@ -52,10 +52,12 @@ from .connector_factory import (
     get_gns3_connector_with_llm_config,
     get_gns3_server_host,
     get_llm_config,
-    set_current_jwt_token,
+)
+from .context_helpers import (
     get_current_jwt_token,
-    set_current_llm_config,
     get_current_llm_config,
+    set_current_jwt_token,
+    set_current_llm_config,
 )
 from .custom_gns3fy import (
     CONSOLE_TYPES,
