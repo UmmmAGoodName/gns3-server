@@ -76,7 +76,6 @@ logger = logging.getLogger(__name__)
 # Define the available tools for the agent
 tools = [
     GNS3TemplateTool(),  # Get GNS3 node templates
-    GNS3TopologyTool(),  # Read GNS3 topology information
     GNS3CreateNodeTool(),  # Create new nodes in GNS3
     GNS3LinkTool(),  # Create links between nodes
     GNS3StartNodeTool(),  # Start GNS3 nodes
