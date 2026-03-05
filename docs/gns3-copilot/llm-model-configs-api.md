@@ -816,11 +816,6 @@ The `context_limit` value is specified in **K tokens** (thousands of tokens) to 
    GPT-4o: 128,000 tokens / 1000 = 128
    ```
 
-3. **Use the reference tool**:
-   ```bash
-   python scripts/show_model_context_limits.py
-   ```
-
 ### Example: Common Models
 
 | Model | Official Value | Configuration |
