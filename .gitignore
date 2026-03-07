@@ -67,3 +67,6 @@ env
 venv
 *venv
 .ropeproject
+
+# Claude Code settings (may contain API keys)
+.claude/
