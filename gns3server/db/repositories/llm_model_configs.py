@@ -17,12 +17,9 @@
 
 from uuid import UUID
 from typing import Optional, List, Dict, Any
-from sqlalchemy import select, update, delete, func, and_, or_
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, update, delete, and_
 from datetime import datetime
 
-import json
 import logging
 
 from .base import BaseRepository
@@ -60,7 +57,7 @@ class LLMModelConfigsRepository(BaseRepository):
         query = select(models.LLMModelConfig).where(
             and_(
                 models.LLMModelConfig.user_id == user_id,
-                models.LLMModelConfig.is_default == True
+                models.LLMModelConfig.is_default
             )
         )
         result = await self._db_session.execute(query)
@@ -200,7 +197,7 @@ class LLMModelConfigsRepository(BaseRepository):
             .where(
                 and_(
                     models.LLMModelConfig.user_id == user_id,
-                    models.LLMModelConfig.is_default == True
+                    models.LLMModelConfig.is_default
                 )
             )
             .values(is_default=False, updated_at=now)
@@ -243,7 +240,7 @@ class LLMModelConfigsRepository(BaseRepository):
         query = select(models.LLMModelConfig).where(
             and_(
                 models.LLMModelConfig.group_id == group_id,
-                models.LLMModelConfig.is_default == True
+                models.LLMModelConfig.is_default
             )
         )
         result = await self._db_session.execute(query)
@@ -383,7 +380,7 @@ class LLMModelConfigsRepository(BaseRepository):
             .where(
                 and_(
                     models.LLMModelConfig.group_id == group_id,
-                    models.LLMModelConfig.is_default == True
+                    models.LLMModelConfig.is_default
                 )
             )
             .values(is_default=False, updated_at=now)
