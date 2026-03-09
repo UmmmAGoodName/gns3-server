@@ -712,6 +712,64 @@ OpenAI-compatible message model.
 
 **Implementation Location**: `utils/message_converters.py`
 
+### LangGraph Agent (gns3_copilot.py)
+
+**File**: `gns3server/agent/gns3_copilot/agent/gns3_copilot.py`
+
+**Responsibility**: LangGraph-based workflow orchestration for AI conversation
+
+**Main Components**:
+
+1. **llm_call Node**: Invokes LLM with tools and conversation history
+   - Injects topology information into system prompt
+   - Handles message trimming for context window management
+   - Routes to tool execution or generates response
+
+2. **tool_node Function**: Executes tool calls and returns results
+   - **Critical**: Serializes tool output to JSON before creating ToolMessage
+   - This ensures both SSE streaming and history storage use consistent JSON format
+   - Implementation:
+     ```python
+     # Serialize observation to JSON string if it's not already a string
+     if not isinstance(observation, str):
+         observation = json.dumps(observation, ensure_ascii=False, indent=2)
+
+     tool_msg = ToolMessage(
+         content=observation,  # Always JSON string format
+         tool_call_id=tool_call["id"],
+         name=tool_call["name"],
+         metadata={"created_at": datetime.utcnow().isoformat()}
+     )
+     ```
+
+3. **generate_title Node**: Auto-generates conversation title on first interaction
+
+**Why Serialize in tool_node?**
+
+- **SSE Streaming**: `on_tool_end` event receives `ToolMessage.content` directly
+- **History Storage**: ToolMessages are persisted to checkpoint database
+- **Consistency**: Both paths use the same JSON format
+
+Without serialization, LangChain would convert dict/list to Python str() representation
+(single quotes, non-JSON format) when saving to history.
+
+**Tool Output Data Flow**:
+
+```
+Tool.invoke() → dict/list
+         ↓
+tool_node() → json.dumps() → JSON string
+         ↓
+ToolMessage(content=JSON_string)
+         ↓
+┌────────────────┬─────────────────┐
+│  SSE Stream    │   History DB    │
+│  (agent_service)│  (checkpoints)  │
+└────────────────┴─────────────────┘
+         ↓
+   Frontend receives standard JSON
+```
+
 ### AgentService
 
 **Responsibility**: Project-level Agent management service
