@@ -45,6 +45,7 @@ Copilot Modes:
 """
 
 # Standard library imports
+import json
 import logging
 import operator
 from datetime import datetime
@@ -383,6 +384,11 @@ def tool_node(state: dict, config: RunnableConfig | None = None):
         except Exception as e:
             logger.error("Tool %s failed: %s", tool_name, e, exc_info=True)
             observation = f"Error: {str(e)}"
+
+        # Serialize observation to JSON string if it's not already a string
+        # This ensures ToolMessage.content is always JSON format, not Python str()
+        if not isinstance(observation, str):
+            observation = json.dumps(observation, ensure_ascii=False, indent=2)
 
         # Create ToolMessage with metadata including created_at
         tool_msg = ToolMessage(
