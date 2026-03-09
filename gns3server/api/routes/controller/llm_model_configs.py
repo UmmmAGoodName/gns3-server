@@ -19,14 +19,12 @@
 API routes for LLM model configurations.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, status
 from uuid import UUID
 from typing import List
 
 from gns3server import schemas
 from gns3server.controller.controller_error import (
-    ControllerError,
     ControllerBadRequestError,
     ControllerNotFoundError,
 )
