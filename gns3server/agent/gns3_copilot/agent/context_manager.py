@@ -2,8 +2,8 @@
 #
 # GNS3-Copilot - AI-powered Network Lab Assistant for GNS3
 #
-# Copyright (C) 2025 Guobin Yue
-# Author: Guobin Yue
+# Copyright (C) 2025 Yue Guobin (岳国宾)
+# Author: Yue Guobin (岳国宾)
 #
 # This file is part of GNS3-Copilot project.
 #

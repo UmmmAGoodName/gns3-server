@@ -17,8 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with GNS3-Copilot. If not, see <https://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2025 Guobin Yue
-# Author: Guobin Yue
+# Copyright (C) 2025 Yue Guobin (岳国宾)
+# Author: Yue Guobin (岳国宾)
 #
 # Project Home: https://github.com/yueguobin/gns3-copilot
 #
@@ -60,7 +60,7 @@ Standard Tool Response Format:
         "error": str               # Error message (if failed)
     }
 
-Author: Guobin Yue
+Author: Yue Guobin (岳国宾)
 """
 
 import ast

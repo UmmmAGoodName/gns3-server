@@ -17,8 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with GNS3-Copilot. If not, see <https://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2025 Guobin Yue
-# Author: Guobin Yue
+# Copyright (C) 2025 Yue Guobin (岳国宾)
+# Author: Yue Guobin (岳国宾)
 #
 # Project Home: https://github.com/yueguobin/gns3-copilot
 #
@@ -33,7 +33,7 @@ Main modules:
 - get_gns3_device_port: Device port information retrieval from GNS3 topology
 - parse_tool_content: Tool execution result parsing and formatting utilities
 
-Author: Guobin Yue
+Author: Yue Guobin (岳国宾)
 """
 
 # Import main utility functions
@@ -50,7 +50,7 @@ try:
 except Exception:
     __version__ = "unknown"
 
-__author__ = "Guobin Yue"
+__author__ = "Yue Guobin (岳国宾)"
 __description__ = "AI-powered network automation assistant for GNS3"
 __url__ = "https://github.com/yueguobin/gns3-copilot"
 

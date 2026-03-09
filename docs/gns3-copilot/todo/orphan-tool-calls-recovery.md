@@ -449,3 +449,32 @@ log.info("After fix: tool_calls=%d",
 - [LangGraph Checkpointer Documentation](https://langchain-ai.github.io/langgraph/concepts/low_level/#checkpointer)
 - [LangGraph State Management](https://langchain-ai.github.io/langgraph/concepts/low_level/#state)
 - [GNS3-Copilot AI Chat API Design](../ai-chat-api-design.md)
+
+
+---
+
+## License
+
+**Copyright © 2025 Yue Guobin (岳国宾)**
+
+This work is licensed under the [Creative Commons Attribution-ShareAlike 4.0
+International License (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/).
+
+![CC BY-SA 4.0](https://i.creativecommons.org/l/by-sa/4.0/88x31.png)
+
+### Summary
+
+You are free to:
+
+- **Share** — Copy and redistribute the material in any medium or format
+- **Adapt** — Remix, transform, and build upon the material for any purpose
+
+Under the following terms:
+
+- **Attribution** — You must give appropriate credit to **Yue Guobin (岳国宾)**, provide
+  a link to the license, and indicate if changes were made.
+- **ShareAlike** — If you remix, transform, or build upon the material, you must
+  distribute your contributions under the **same license** (CC BY-SA 4.0).
+
+Full license text: [DESIGN_DOCS_LICENSE](../DESIGN_DOCS_LICENSE.md)
+

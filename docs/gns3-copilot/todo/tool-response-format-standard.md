@@ -213,3 +213,32 @@ When the format changes, update the `metadata.version` field, and the frontend a
 - Implementation: `gns3server/agent/gns3_copilot/utils/parse_tool_content.py`
 - Message conversion: `gns3server/agent/gns3_copilot/utils/message_converters.py`
 - Tool examples: `gns3server/agent/gns3_copilot/tools_v2/`
+
+
+---
+
+## License
+
+**Copyright © 2025 Yue Guobin (岳国宾)**
+
+This work is licensed under the [Creative Commons Attribution-ShareAlike 4.0
+International License (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/).
+
+![CC BY-SA 4.0](https://i.creativecommons.org/l/by-sa/4.0/88x31.png)
+
+### Summary
+
+You are free to:
+
+- **Share** — Copy and redistribute the material in any medium or format
+- **Adapt** — Remix, transform, and build upon the material for any purpose
+
+Under the following terms:
+
+- **Attribution** — You must give appropriate credit to **Yue Guobin (岳国宾)**, provide
+  a link to the license, and indicate if changes were made.
+- **ShareAlike** — If you remix, transform, or build upon the material, you must
+  distribute your contributions under the **same license** (CC BY-SA 4.0).
+
+Full license text: [DESIGN_DOCS_LICENSE](../DESIGN_DOCS_LICENSE.md)
+
