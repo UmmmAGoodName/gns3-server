@@ -795,3 +795,30 @@ test_cases = [
 | Assume vendor/OS | Ask or detect from node |
 | Mix features in one dict | Separate by feature key |
 | Use string for numbers | Use int: `process_id: 100` not `"process_id": "100"` |
+
+---
+
+## License
+
+**Copyright © 2025 Yue Guobin (岳国宾)**
+
+This work is licensed under the [Creative Commons Attribution-ShareAlike 4.0
+International License (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/).
+
+![CC BY-SA 4.0](https://i.creativecommons.org/l/by-sa/4.0/88x31.png)
+
+### Summary
+
+You are free to:
+
+- **Share** — Copy and redistribute the material in any medium or format
+- **Adapt** — Remix, transform, and build upon the material for any purpose
+
+Under the following terms:
+
+- **Attribution** — You must give appropriate credit to **Yue Guobin (岳国宾)**, provide
+  a link to the license, and indicate if changes were made.
+- **ShareAlike** — If you remix, transform, or build upon the material, you must
+  distribute your contributions under the **same license** (CC BY-SA 4.0).
+
+Full license text: [DESIGN_DOCS_LICENSE](../DESIGN_DOCS_LICENSE.md)
