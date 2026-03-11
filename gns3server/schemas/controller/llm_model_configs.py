@@ -14,8 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Optional, Literal
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, Literal, Union
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from uuid import UUID
 
 from .base import DateTimeModelMixin
@@ -100,7 +100,7 @@ class LLMModelConfigUpdate(BaseModel):
     model: Optional[str] = None
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
     api_key: Optional[str] = None
-    max_tokens: Optional[int] = Field(None, gt=0)
+    max_tokens: Optional[Union[int, str]] = Field(None, description="Max tokens for generation (can be null)")
     context_limit: Optional[int] = Field(None, gt=0, description="Model context window limit in K tokens (e.g., 128 = 128K tokens)")
     context_strategy: Optional[Literal["conservative", "balanced", "aggressive"]] = Field(
         None, description="Context trimming strategy"
@@ -112,6 +112,19 @@ class LLMModelConfigUpdate(BaseModel):
 
     # Allow extra config fields
     model_config = ConfigDict(extra="allow")
+
+    @field_validator('max_tokens', mode='before')
+    @classmethod
+    def validate_max_tokens(cls, v):
+        """Handle string 'null' values for max_tokens."""
+        if v == "null" or v == "":
+            return None
+        if v is None:
+            return None
+        # Convert to int if it's a valid integer string
+        if isinstance(v, str) and v.isdigit():
+            return int(v)
+        return v
 
 
 # Response schemas

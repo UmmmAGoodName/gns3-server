@@ -148,13 +148,21 @@ The `model_type` field accepts the following values:
 | `model` | string (optional) | Model name |
 | `temperature` | float (optional) | Temperature |
 | `api_key` | string (optional) | API key |
-| `max_tokens` | integer (optional) | Max tokens |
+| `max_tokens` | integer or string (optional) | Max tokens for generation. Accepts integers, null, or the string "null" (which will be converted to null) |
 | `context_limit` | integer (optional) | Model context window limit in K tokens |
 | `context_strategy` | string (optional) | Context trimming strategy |
 | `is_default` | boolean (optional) | Default flag |
 | `expected_version` | integer (optional) | **Optimistic locking version** |
 
 **Note:** When using `expected_version`, the API will verify the version hasn't changed since you read the data. If it has, you'll receive a 409 Conflict error.
+
+**Robust Null Handling:** The `max_tokens` field includes a validator that gracefully handles various null representations:
+- Accepts proper JSON `null` values
+- Accepts the string `"null"` (common serialization issue) and converts it to `null`
+- Accepts empty strings `""` and converts them to `null`
+- Accepts numeric strings (e.g., `"4096"`) and converts them to integers
+
+This prevents validation errors when clients incorrectly serialize `null` as the string `"null"`.
 
 ### LLMModelConfigResponse
 
