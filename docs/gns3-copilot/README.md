@@ -7,21 +7,12 @@ This directory contains design documentation, implementation guides, and future 
 ```
 docs/gns3-copilot/
 ├── README.md                    # This file
-├── implemented/                 # Implemented features and designs
-│   ├── chat-api.md             # Chat API design (SSE, session management)
-│   ├── llm-model-configs.md    # LLM model configuration system
-│   ├── command-security.md     # Command security and filtering
-│   ├── context-window-management.md  # Context window optimization
-│   └── node-control-tools.md   # Node start/stop tools for lab automation
-├── todo/                        # Planned features and designs
-│   ├── jinja2-config-templates-system.md        # Config template system
-│   ├── config-templates-implementation-guide.md # Template implementation
-│   ├── ai-prompting-for-config-templates.md     # AI prompts for templates
-│   ├── acl-web-ui-implementation-guide.md       # ACL/ACL Web UI
-│   ├── hitl-implementation-plan.md              # HITL (Human-in-the-Loop)
-│   ├── vision-topology-creation.md              # Vision-based topology
-│   └── ...                                          # More planned features
-└── guides/                      # User and developer guides (TBD)
+└── implemented/                 # Implemented features and designs
+    ├── chat-api.md             # Chat API design (SSE, session management)
+    ├── llm-model-configs.md    # LLM model configuration system
+    ├── command-security.md     # Command security and filtering
+    ├── context-window-management.md  # Context window optimization
+    └── node-control-tools.md   # Node start/stop/suspend tools for lab automation
 ```
 
 ## Implemented Features
@@ -84,43 +75,21 @@ Tools for controlling network device lifecycle in GNS3 projects.
 
 **Status:** ✅ Implemented
 
-## Planned Features
+## Future Enhancements
 
-### Jinja2 Configuration Templates (`todo/jinja2-config-templates-system.md`)
-Template-based configuration generation system.
+The following features are currently under consideration or development:
 
-**Planned Features:**
-- Vendor-specific templates (Cisco, Juniper, Huawei, etc.)
-- JSON schema validation
-- AI generates structured data → Templates render configs
-- Multi-vendor support
-
-**Status:** 📋 Design Complete, Implementation Pending
-
-### ACL Web UI (`todo/acl-web-ui-implementation-guide.md`)
-Web-based ACL (Access Control List) management interface.
-
-**Status:** 📋 Design Complete
-
-### HITL Implementation (`todo/hitl-implementation-plan.md`)
-Enhanced Human-in-the-Loop confirmation workflows.
-
-**Status:** 📋 Design Complete
-
-### Vision Topology Creation (`todo/vision-topology-creation.md`)
-Create network topologies from images/diagrams.
-
-**Status:** 📋 Design Complete
+- Configuration Templates: Template-based configuration generation for multi-vendor network devices
+- Vision-based Topology Creation: Create network topologies from images/diagrams
+- Enhanced HITL Workflows: Advanced Human-in-the-Loop confirmation patterns
+- Web UI Enhancements: Improved management interfaces
 
 ## Contributing
 
 When adding new documentation:
 
-1. **Design Phase:** Add new documents to `todo/`
-2. **Implementation:** Move to `implemented/` when feature is complete
-3. **Naming:**
-   - `todo/`: Use descriptive names like `{feature}-implementation-guide.md`
-   - `implemented/`: Use concise names like `{feature}.md`
+1. **Implementation:** Add documentation to `implemented/` when feature is complete
+2. **Naming:** Use concise names like `{feature}.md`
 
 ## Document Status Legend
 
@@ -146,4 +115,4 @@ When adding new documentation:
 
 ---
 
-_Last updated: 2026-03-11_
+_Last updated: 2026-03-12_

@@ -1,10 +1,213 @@
-# Node Control Tools
+# Node and Topology Management Tools
 
 ## Overview
 
-GNS3-Copilot provides tools for controlling the lifecycle of network devices in GNS3 projects. These tools enable AI agents to start, stop, suspend, and manage nodes as part of automated lab management workflows.
+GNS3-Copilot provides tools for managing the lifecycle of network devices and topology in GNS3 projects. These tools enable AI agents to create, connect, start, stop, suspend, and manage nodes as part of automated lab management workflows.
 
 ## Available Tools
+
+### GNS3TemplateTool 🆕
+
+**Tool Name:** `get_gns3_templates`
+
+**Description:** Retrieves all available device templates from the GNS3 server, including template names, IDs, and types.
+
+**Input:**
+```json
+{}
+```
+
+**Output:**
+```json
+{
+  "templates": [
+    {
+      "name": "Cisco IOSv",
+      "template_id": "uuid-of-template",
+      "template_type": "router"
+    },
+    {
+      "name": "Ethernet switch",
+      "template_id": "uuid-of-template2",
+      "template_type": "switch"
+    }
+  ]
+}
+```
+
+**Features:**
+- Lists all available device templates
+- No input required (connects to configured GNS3 server)
+- Returns template_id needed for node creation
+
+**Use Cases:**
+- Discover available device types before creating nodes
+- Get template_id for GNS3CreateNodeTool
+- Template inventory management
+
+### GNS3CreateNodeTool 🆕
+
+**Tool Name:** `create_gns3_node`
+
+**Description:** Creates multiple nodes in a GNS3 project using specified templates and coordinates.
+
+**Input:**
+```json
+{
+  "project_id": "uuid-of-project",
+  "nodes": [
+    {
+      "template_id": "uuid-of-template",
+      "x": 100,
+      "y": -200
+    },
+    {
+      "template_id": "uuid-of-template2",
+      "x": -200,
+      "y": 300
+    }
+  ]
+}
+```
+
+**Output:**
+```json
+{
+  "project_id": "uuid-of-project",
+  "created_nodes": [
+    {
+      "node_id": "uuid-of-node1",
+      "name": "NodeName1",
+      "status": "success"
+    },
+    {
+      "node_id": "uuid-of-node2",
+      "name": "NodeName2",
+      "status": "success"
+    }
+  ],
+  "total_nodes": 2,
+  "successful_nodes": 2,
+  "failed_nodes": 0
+}
+```
+
+**Features:**
+- Batch create multiple nodes
+- Uses templates for consistent node configuration
+- X/Y coordinate positioning for topology layout
+- **Important**: Ensure distance between any two nodes is greater than 250px for clear interface labels
+
+**Use Cases:**
+- Automated topology deployment
+- Multi-node lab initialization
+- Programmatic topology creation
+
+**Implementation Details:**
+- Calls `POST /projects/{project_id}/nodes` for each node
+- Uses template_id from GNS3TemplateTool
+- Assigns default names sequentially (e.g., R1, R2, R3)
+
+### GNS3LinkTool 🆕
+
+**Tool Name:** `create_gns3_link`
+
+**Description:** Creates one or more links between nodes in a GNS3 project by connecting their network ports.
+
+**Input:**
+```json
+{
+  "project_id": "uuid-of-project",
+  "links": [
+    {
+      "node_id1": "uuid-of-node1",
+      "port1": "Ethernet0/0",
+      "node_id2": "uuid-of-node2",
+      "port2": "Ethernet0/0"
+    }
+  ]
+}
+```
+
+**Output:**
+```json
+[
+  {
+    "link_id": "uuid-of-link",
+    "node_id1": "uuid-of-node1",
+    "port1": "Ethernet0/0",
+    "node_id2": "uuid-of-node2",
+    "port2": "Ethernet0/0"
+  }
+]
+```
+
+**Features:**
+- Batch create multiple links
+- Automatic port discovery by name
+- Error handling for individual link failures
+- Port names must match topology data
+
+**Use Cases:**
+- Automated topology wiring
+- Multi-link connection setup
+- Network infrastructure deployment
+
+**Implementation Details:**
+- Calls `POST /projects/{project_id}/links` for each link
+- Port names must match those from `gns3_topology_reader` tool
+- Uses adapter_number and port_number for port identification
+- Supports both physical and virtual interfaces
+
+### GNS3UpdateNodeNameTool 🆕
+
+**Tool Name:** `update_gns3_node_name`
+
+**Description:** Updates the name of one or multiple nodes in a GNS3 project.
+
+**Input:**
+```json
+{
+  "project_id": "uuid-of-project",
+  "nodes": [
+    {"node_id": "uuid-of-node-1", "new_name": "Router1"},
+    {"node_id": "uuid-of-node-2", "new_name": "Switch1"}
+  ]
+}
+```
+
+**Output:**
+```json
+{
+  "project_id": "...",
+  "total_nodes": 2,
+  "successful": 2,
+  "failed": 0,
+  "nodes": [
+    {
+      "node_id": "...",
+      "old_name": "...",
+      "new_name": "Router1",
+      "status": "success"
+    }
+  ]
+}
+```
+
+**Features:**
+- Batch rename multiple nodes
+- Verification of name change
+- Comprehensive error handling
+
+**Use Cases:**
+- Apply naming conventions to topology
+- Rename nodes for better organization
+- Update node names after topology creation
+
+**Implementation Details:**
+- Calls `PUT /projects/{project_id}/nodes/{node_id}`
+- Cannot rename while node is started (except special node types)
+- CAN rename while node is suspended
 
 ### GNS3StartNodeTool
 
@@ -46,46 +249,7 @@ GNS3-Copilot provides tools for controlling the lifecycle of network devices in 
 - Multi-node topology initialization
 - Lab startup automation
 
-### GNS3StartNodeQuickTool
-
-**Tool Name:** `start_gns3_node_quick`
-
-**Description:** Starts nodes in a GNS3 project WITHOUT waiting for startup completion. Suitable for automated deployment workflows where long waits would cause HTTP timeouts.
-
-**Input:**
-```json
-{
-  "project_id": "uuid-of-project",
-  "node_ids": ["uuid-of-node-1", "uuid-of-node-2"]
-}
-```
-
-**Output:**
-```json
-{
-  "project_id": "...",
-  "total_nodes": 2,
-  "successful": 2,
-  "failed": 0,
-  "nodes": [
-    {"node_id": "...", "name": "...", "status": "started"}
-  ],
-  "note": "Start commands sent. Nodes are booting in background. Check node status later."
-}
-```
-
-**Features:**
-- Sends start commands immediately
-- No waiting for startup completion
-- Returns initial status
-- Prevents HTTP timeouts in automated workflows
-
-**Use Cases:**
-- Automated CI/CD pipelines
-- Bulk node deployment
-- Workflows requiring immediate return
-
-### GNS3StopNodeTool ✨
+### GNS3StopNodeTool
 
 **Tool Name:** `stop_gns3_node`
 
@@ -132,7 +296,7 @@ GNS3-Copilot provides tools for controlling the lifecycle of network devices in 
 - Retrieves updated status after stop command
 - Returns detailed results for each node
 
-### GNS3SuspendNodeTool ✨
+### GNS3SuspendNodeTool
 
 **Tool Name:** `suspend_gns3_node`
 
@@ -218,26 +382,40 @@ GNS3-Copilot provides tools for controlling the lifecycle of network devices in 
 
 ```
 gns3server/agent/gns3_copilot/tools_v2/
-├── gns3_start_node.py     # Start tools
-├── gns3_stop_node.py      # Stop tool
-└── gns3_suspend_node.py   # Suspend tool
+├── gns3_create_node.py     # Node creation tool 🆕
+├── gns3_create_link.py     # Link creation tool 🆕
+├── gns3_get_node_temp.py   # Template retrieval tool 🆕
+├── gns3_update_node_name.py # Node rename tool 🆕
+├── gns3_start_node.py      # Start node tool
+├── gns3_stop_node.py       # Stop node tool
+└── gns3_suspend_node.py    # Suspend node tool
 ```
 
 ### API Integration
 
-The tools use the `Node` class from `custom_gns3fy`:
+The tools use the `Node` and `Link` classes from `custom_gns3fy`:
 
 ```python
-from gns3server.agent.gns3_copilot.gns3_client import Node
+from gns3server.agent.gns3_copilot.gns3_client import Node, Link, get_gns3_connector
 
-# Start node
-node.start()
+# Get templates
+templates = get_gns3_connector().get_templates()
 
-# Stop node
-node.stop()
+# Create node
+node = Node(project_id=project_id, template_id=template_id, x=x, y=y, connector=gns3_server)
+node.create()
 
-# Suspend node
-node.suspend()
+# Create link
+link = Link(project_id=project_id, connector=gns3_server, nodes=[...])
+link.create()
+
+# Update node name
+node = Node(project_id=project_id, node_id=node_id, connector=gns3_server)
+node.update(name=new_name)
+
+# Start/stop/suspend node
+node = Node(project_id=project_id, node_id=node_id, connector=gns3_server)
+node.start()   # or node.stop() / node.suspend()
 ```
 
 ### Progress Tracking
@@ -296,23 +474,31 @@ Starting 3 node(s), please wait...
 ### Teaching Assistant Mode
 
 **Tools Available:**
+- `GNS3TemplateTool` - List available device templates 🆕
+- `GNS3CreateNodeTool` - Create nodes in topology 🆕
+- `GNS3LinkTool` - Create links between nodes 🆕
+- `GNS3UpdateNodeNameTool` - Rename nodes 🆕
 - `GNS3StartNodeTool` - For diagnostics requiring started nodes
 
 **Capabilities:**
 - READ-ONLY diagnostic tools
+- Can create and manage topology (nodes, links, names)
 - Cannot stop or suspend nodes (prevents disruption of active labs)
 
 ### Lab Automation Assistant Mode
 
 **Tools Available:**
+- `GNS3TemplateTool` - List available device templates 🆕
+- `GNS3CreateNodeTool` - Create nodes in topology 🆕
+- `GNS3LinkTool` - Create links between nodes 🆕
+- `GNS3UpdateNodeNameTool` - Rename nodes 🆕
 - `GNS3StartNodeTool` - Full lab deployment
 - `GNS3StopNodeTool` - Full lab shutdown
-- `GNS3SuspendNodeTool` - Lab pause with state preservation ✨
-- `GNS3StartNodeQuickTool` - Fast automated deployment
+- `GNS3SuspendNodeTool` - Lab pause with state preservation
 
 **Capabilities:**
 - Full diagnostic and configuration tools
-- Complete lab lifecycle management (start/stop/suspend)
+- Complete topology and lifecycle management (create, connect, start/stop/suspend)
 - Automated workflows with state preservation
 - Lab snapshot capabilities for later resumption
 
@@ -332,21 +518,7 @@ result = tool._run(json.dumps({
 # Output includes progress bar and final status
 ```
 
-### Example 2: Quick Start for CI/CD
-
-```python
-from gns3server.agent.gns3_copilot.tools_v2 import GNS3StartNodeQuickTool
-
-tool = GNS3StartNodeQuickTool()
-result = tool._run(json.dumps({
-    "project_id": "abc-123-def",
-    "node_ids": ["node-1"]
-}))
-
-# Immediate return without waiting
-```
-
-### Example 3: Stop Nodes
+### Example 2: Stop Nodes
 
 ```python
 from gns3server.agent.gns3_copilot.tools_v2 import GNS3StopNodeTool
@@ -360,11 +532,11 @@ result = tool._run(json.dumps({
 # Immediate return with stop status
 ```
 
-### Example 4: Automated Lab Lifecycle
+### Example 3: Automated Lab Lifecycle
 
 ```python
 # Lab deployment
-start_tool = GNS3StartNodeQuickTool()
+start_tool = GNS3StartNodeTool()
 start_result = start_tool._run(json.dumps({
     "project_id": project_id,
     "node_ids": all_node_ids
@@ -380,7 +552,7 @@ stop_result = stop_tool._run(json.dumps({
 }))
 ```
 
-### Example 5: Lab Pause and Resume ✨
+### Example 4: Lab Pause and Resume
 
 ```python
 from gns3server.agent.gns3_copilot.tools_v2 import GNS3SuspendNodeTool
@@ -413,7 +585,7 @@ start_result = start_tool._run(json.dumps({
 # Back to previous state in seconds!
 ```
 
-### Example 6: Suspend While Renaming Nodes ✨
+### Example 5: Suspend While Renaming Nodes
 
 ```python
 from gns3server.agent.gns3_copilot.tools_v2 import (
@@ -440,6 +612,152 @@ rename_result = rename_tool._run(json.dumps({
 
 # Resume when ready
 # Note: Cannot rename while started, but CAN rename while suspended!
+```
+
+### Example 6: Get Available Templates 🆕
+
+```python
+from gns3server.agent.gns3_copilot.tools_v2 import GNS3TemplateTool
+
+tool = GNS3TemplateTool()
+result = tool._run("")
+
+# Returns all available device templates
+# {
+#   "templates": [
+#     {"name": "Cisco IOSv", "template_id": "...", "template_type": "router"},
+#     {"name": "Ethernet switch", "template_id": "...", "template_type": "switch"}
+#   ]
+# }
+```
+
+### Example 7: Create Topology Nodes 🆕
+
+```python
+from gns3server.agent.gns3_copilot.tools_v2 import GNS3CreateNodeTool
+
+tool = GNS3CreateNodeTool()
+result = tool._run(json.dumps({
+    "project_id": "abc-123-def",
+    "nodes": [
+        {
+            "template_id": "uuid-of-router-template",
+            "x": 100,
+            "y": -200
+        },
+        {
+            "template_id": "uuid-of-switch-template",
+            "x": -200,
+            "y": 300
+        }
+    ]
+}))
+
+# Creates two nodes with specified templates and positions
+```
+
+### Example 8: Connect Nodes with Links 🆕
+
+```python
+from gns3server.agent.gns3_copilot.tools_v2 import GNS3LinkTool
+
+tool = GNS3LinkTool()
+result = tool._run(json.dumps({
+    "project_id": "abc-123-def",
+    "links": [
+        {
+            "node_id1": "uuid-of-node1",
+            "port1": "Ethernet0/0",
+            "node_id2": "uuid-of-node2",
+            "port2": "Ethernet0/0"
+        },
+        {
+            "node_id1": "uuid-of-node1",
+            "port1": "Ethernet0/1",
+            "node_id2": "uuid-of-node3",
+            "port2": "Ethernet0/0"
+        }
+    ]
+}))
+
+# Creates two links connecting the nodes
+```
+
+### Example 9: Apply Naming Convention 🆕
+
+```python
+from gns3server.agent.gns3_copilot.tools_v2 import GNS3UpdateNodeNameTool
+
+tool = GNS3UpdateNodeNameTool()
+result = tool._run(json.dumps({
+    "project_id": "abc-123-def",
+    "nodes": [
+        {"node_id": "node-1", "new_name": "R1-Core"},
+        {"node_id": "node-2", "new_name": "R2-Core"},
+        {"node_id": "node-3", "new_name": "S1-Access"},
+        {"node_id": "node-4", "new_name": "S2-Access"}
+    ]
+}))
+
+# Applies consistent naming to all nodes
+```
+
+### Example 10: Complete Topology Creation Workflow 🆕
+
+```python
+from gns3server.agent.gns3_copilot.tools_v2 import (
+    GNS3TemplateTool,
+    GNS3CreateNodeTool,
+    GNS3LinkTool,
+    GNS3UpdateNodeNameTool,
+    GNS3StartNodeTool
+)
+
+# Step 1: Get available templates
+template_tool = GNS3TemplateTool()
+templates = template_tool._run("")
+# Find router and switch template_ids...
+
+# Step 2: Create nodes
+create_tool = GNS3CreateNodeTool()
+nodes = create_tool._run(json.dumps({
+    "project_id": project_id,
+    "nodes": [
+        {"template_id": router_template_id, "x": 0, "y": -200},
+        {"template_id": router_template_id, "x": 200, "y": -200},
+        {"template_id": switch_template_id, "x": 100, "y": 0}
+    ]
+}))
+
+# Step 3: Connect nodes
+link_tool = GNS3LinkTool()
+links = link_tool._run(json.dumps({
+    "project_id": project_id,
+    "links": [
+        {"node_id1": nodes["created_nodes"][0]["node_id"], "port1": "Ethernet0/0",
+         "node_id2": nodes["created_nodes"][2]["node_id"], "port2": "Ethernet0/0"},
+        {"node_id1": nodes["created_nodes"][1]["node_id"], "port1": "Ethernet0/0",
+         "node_id2": nodes["created_nodes"][2]["node_id"], "port2": "Ethernet0/1"}
+    ]
+}))
+
+# Step 4: Apply naming
+name_tool = GNS3UpdateNodeNameTool()
+names = name_tool._run(json.dumps({
+    "project_id": project_id,
+    "nodes": [
+        {"node_id": nodes["created_nodes"][0]["node_id"], "new_name": "R1"},
+        {"node_id": nodes["created_nodes"][1]["node_id"], "new_name": "R2"},
+        {"node_id": nodes["created_nodes"][2]["node_id"], "new_name": "SW1"}
+    ]
+}))
+
+# Step 5: Start nodes
+start_tool = GNS3StartNodeTool()
+start_result = start_tool._run(json.dumps({
+    "project_id": project_id,
+    "node_ids": [n["node_id"] for n in nodes["created_nodes"]]
+}))
 ```
 
 ## Error Handling
@@ -485,7 +803,7 @@ All tools include comprehensive error handling:
 
 ### Access Control
 
-- Both tools respect GNS3's built-in access control
+- All tools respect GNS3's built-in access control
 - Requires valid GNS3 server authentication
 - Project-level permissions apply
 
@@ -494,6 +812,9 @@ All tools include comprehensive error handling:
 All operations are logged:
 ```python
 logger.info("Starting %d nodes in project %s...", len(node_ids), project_id)
+logger.info("Creating %d nodes in project %s...", len(nodes), project_id)
+logger.info("Creating %d links in project %s...", len(links), project_id)
+logger.info("Updating names for %d nodes in project %s...", len(nodes), project_id)
 logger.info("Stop command sent for node %s (%s)", node_id, node.name)
 logger.info("Suspend command sent for node %s (%s)", node_id, node.name)
 ```
@@ -501,10 +822,12 @@ logger.info("Suspend command sent for node %s (%s)", node_id, node.name)
 ### Mode-Based Restrictions
 
 - **Teaching Assistant Mode**:
-  - Can start nodes
+  - Can create topology (templates, nodes, links, names)
+  - Can start nodes for diagnostics
   - Cannot stop, suspend (prevents disruption of active labs)
 
 - **Lab Automation Assistant Mode**:
+  - Can create and manage full topology
   - Can start, stop, and suspend nodes (full lifecycle control)
   - Complete lab management including state preservation
 
@@ -512,8 +835,11 @@ logger.info("Suspend command sent for node %s (%s)", node_id, node.name)
 
 | Operation | Typical Duration | Wait Time | Progress | State Preserved |
 |-----------|-----------------|-----------|----------|-----------------|
-| Start (normal) | 60-180s | ~140s base | Yes | N/A |
-| Start (quick) | < 1s | 0s | No | N/A |
+| Get Templates | < 2s | 0s | No | N/A |
+| Create Node | < 1s per node | 0s | No | N/A |
+| Create Link | < 1s per link | 0s | No | N/A |
+| Update Name | < 1s per node | 0s | No | N/A |
+| Start | 60-180s | ~140s base | Yes | N/A |
 | Stop | < 5s | 0s | No | ❌ No |
 | Suspend | < 10s | 0s | No | ✅ Yes |
 
@@ -523,11 +849,16 @@ logger.info("Suspend command sent for node %s (%s)", node_id, node.name)
 - Stop/Suspend do not require progress tracking (immediate feedback)
 - Start duration depends on node type (router, switch, PC, etc.)
 - Suspend provides fast resume capability compared to full start
+- Create node/link operations are fast and require no waiting
+- Template retrieval is instant with no parameters needed
 
 ## Future Enhancements
 
 ### Planned Features
 
+- [ ] **Quick Start Tool**: Start nodes without waiting for completion (for CI/CD)
+- [ ] **Delete Node Tool**: Remove nodes from topology
+- [ ] **Delete Link Tool**: Remove links from topology
 - [ ] **Resume Tool**: Explicit resume operation for suspended nodes
 - [ ] **Restart Tool**: Combined stop + start operation
 - [ ] **Bulk Status Check**: Query multiple nodes without stopping
@@ -536,8 +867,9 @@ logger.info("Suspend command sent for node %s (%s)", node_id, node.name)
 
 ### Potential Improvements
 
+- [ ] Auto-layout calculation (optimal node positioning)
 - [ ] Progress tracking for long suspend operations (rare but possible)
-- [ ] Concurrent suspend operations (parallel API calls)
+- [ ] Concurrent create/link operations (parallel API calls)
 - [ ] Suspend node groups by name pattern
 - [ ] Dependency-aware suspend (suspend in dependency order)
 - [ ] Auto-suspend after idle timeout
@@ -551,6 +883,6 @@ logger.info("Suspend command sent for node %s (%s)", node_id, node.name)
 
 ---
 
-_Implementation Date: 2026-03-11_
+_Implementation Date: 2026-03-12_
 
-_Status: ✅ Implemented and Available in Lab Automation Assistant Mode_
+_Status: ✅ Implemented - Topology management tools available in both modes. Full lifecycle management (start/stop/suspend) available in Lab Automation Assistant Mode_
