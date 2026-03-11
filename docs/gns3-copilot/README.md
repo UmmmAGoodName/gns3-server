@@ -11,7 +11,8 @@ docs/gns3-copilot/
 │   ├── chat-api.md             # Chat API design (SSE, session management)
 │   ├── llm-model-configs.md    # LLM model configuration system
 │   ├── command-security.md     # Command security and filtering
-│   └── context-window-management.md  # Context window optimization
+│   ├── context-window-management.md  # Context window optimization
+│   └── node-control-tools.md   # Node start/stop tools for lab automation
 ├── todo/                        # Planned features and designs
 │   ├── jinja2-config-templates-system.md        # Config template system
 │   ├── config-templates-implementation-guide.md # Template implementation
@@ -68,6 +69,18 @@ Optimization strategies for handling large project contexts.
 - Token usage optimization
 - Summary generation
 - Context compression
+
+**Status:** ✅ Implemented
+
+### Node Control Tools (`implemented/node-control-tools.md`)
+Tools for controlling network device lifecycle in GNS3 projects.
+
+**Key Features:**
+- Start nodes with progress tracking
+- Quick start for automated workflows
+- Stop nodes for lab shutdown
+- Batch operations support
+- Mode-based access control
 
 **Status:** ✅ Implemented
 
@@ -133,4 +146,4 @@ When adding new documentation:
 
 ---
 
-_Last updated: 2026-03-10_
+_Last updated: 2026-03-11_

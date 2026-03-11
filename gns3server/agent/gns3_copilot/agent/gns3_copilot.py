@@ -89,6 +89,8 @@ from gns3server.agent.gns3_copilot.tools_v2 import (
 from gns3server.agent.gns3_copilot.tools_v2 import GNS3CreateNodeTool
 from gns3server.agent.gns3_copilot.tools_v2 import GNS3LinkTool
 from gns3server.agent.gns3_copilot.tools_v2 import GNS3StartNodeTool
+from gns3server.agent.gns3_copilot.tools_v2 import GNS3StopNodeTool
+from gns3server.agent.gns3_copilot.tools_v2 import GNS3SuspendNodeTool
 from gns3server.agent.gns3_copilot.tools_v2 import GNS3TemplateTool
 from gns3server.agent.gns3_copilot.tools_v2 import GNS3UpdateNodeNameTool
 from gns3server.agent.gns3_copilot.tools_v2 import VPCSMultiCommands
@@ -118,6 +120,8 @@ LAB_AUTOMATION_ASSISTANT_MODE_TOOLS = [
     GNS3CreateNodeTool(),  # Create new nodes in GNS3
     GNS3LinkTool(),  # Create links between nodes
     GNS3StartNodeTool(),  # Start GNS3 nodes
+    GNS3StopNodeTool(),  # Stop GNS3 nodes
+    GNS3SuspendNodeTool(),  # Suspend GNS3 nodes (preserve state)
     GNS3UpdateNodeNameTool(),  # Update node name
     ExecuteMultipleDeviceCommands(),  # Execute show/display/debug commands
     # (READ-ONLY)
