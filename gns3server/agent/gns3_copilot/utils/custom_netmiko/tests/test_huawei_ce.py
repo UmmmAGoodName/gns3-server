@@ -51,10 +51,8 @@ class TestHuaweiTelnetCEDriver(unittest.TestCase):
 
         # Check CLASS_MAPPER_BASE
         self.assertIn("huawei_telnet_ce", CLASS_MAPPER_BASE)
-        self.assertEqual(CLASS_MAPPER_BASE["huawei_telnet_ce"], self.HuaweiTelnetCE)
-
-        # Check alias
-        self.assertIn("huawei_ce", CLASS_MAPPER)
+        self.assertEqual(CLASS_MAPPER_BASE["huawei_telnet_ce"],
+                         self.HuaweiTelnetCE)
 
     def test_inheritance_from_huawei_base(self):
         """Test that HuaweiTelnetCE inherits from HuaweiBase."""

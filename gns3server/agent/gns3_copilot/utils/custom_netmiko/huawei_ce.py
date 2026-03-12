@@ -396,19 +396,12 @@ def register_custom_device_type() -> None:
     # not a function
     sd = importlib.import_module("netmiko.ssh_dispatcher")
 
-    # Add to both mappers
+    # Register the device type in both mappers
     # CLASS_MAPPER_BASE is used for base class definitions
     sd.CLASS_MAPPER_BASE["huawei_telnet_ce"] = HuaweiTelnetCE
-    sd.CLASS_MAPPER_BASE["huawei_ce"] = HuaweiTelnetCE
 
     # CLASS_MAPPER is used by ConnectHandler for device type validation
     sd.CLASS_MAPPER["huawei_telnet_ce"] = HuaweiTelnetCE
-    sd.CLASS_MAPPER["huawei_ce"] = HuaweiTelnetCE
-
-    # CRITICAL: Netmiko may also look for types with _telnet suffix
-    # Add this variant to ensure compatibility
-    sd.CLASS_MAPPER["huawei_telnet_ce_telnet"] = HuaweiTelnetCE
-    sd.CLASS_MAPPER_BASE["huawei_telnet_ce_telnet"] = HuaweiTelnetCE
 
     # CRITICAL: Update the static platforms lists
     # These lists are computed at module import time and won't
