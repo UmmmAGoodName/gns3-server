@@ -55,6 +55,17 @@ class RuijieTelnetEnhanced(RuijieOSBase):
     and adds automatic handling for interactive configuration prompts.
     """
 
+    # Interactive command patterns that trigger [yes/no] prompts
+    # These are commands that commonly require confirmation
+    INTERACTIVE_PATTERNS = [
+        re.compile(r'^router-id\s+', re.IGNORECASE),  # OSPF/EIGRP/BGP router-id
+        re.compile(r'^erase\s+', re.IGNORECASE),        # erase startup-config
+        re.compile(r'^delete\s+', re.IGNORECASE),       # delete files
+        re.compile(r'^format\s+', re.IGNORECASE),       # format filesystem
+        re.compile(r'^reload\b', re.IGNORECASE),        # reload/reboot
+        re.compile(r'^boot\s+system\s+', re.IGNORECASE), # change boot image
+    ]
+
     def __init__(
         self,
         *args,
@@ -66,6 +77,41 @@ class RuijieTelnetEnhanced(RuijieOSBase):
         kwargs["default_enter"] = "\r\n" if default_enter is None else default_enter
         super().__init__(*args, **kwargs)
 
+    def _preprocess_interactive_commands(
+        self, config_commands: list[str]
+    ) -> list[str]:
+        """
+        Preprocess commands to insert 'yes' after interactive commands.
+
+        Detects commands that trigger [yes/no] prompts and automatically
+        inserts 'yes' response after them.
+
+        Args:
+            config_commands: List of configuration commands
+
+        Returns:
+            List of commands with 'yes' inserted after interactive commands
+        """
+        processed = []
+
+        for cmd in config_commands:
+            # Add the original command
+            processed.append(cmd)
+
+            # Check if this command matches any interactive pattern
+            for pattern in self.INTERACTIVE_PATTERNS:
+                if pattern.match(cmd.strip()):
+                    logging.info(
+                        "Ruijie device: Detected interactive command '%s', "
+                        "inserting 'yes'",
+                        cmd.strip(),
+                    )
+                    # Insert 'yes' after this command
+                    processed.append("yes")
+                    break
+
+        return processed
+
     def send_config_set(
         self,
         config_commands: str | list[str],
@@ -74,10 +120,10 @@ class RuijieTelnetEnhanced(RuijieOSBase):
         """
         Send configuration commands with interactive prompt handling.
 
-        Strategy:
-        - Send commands ONE BY ONE (not batch)
-        - After each command, read output and check for [yes/no] prompt
-        - If prompt detected, send 'yes' immediately before next command
+        Hybrid Strategy:
+        1. Preprocess commands to insert 'yes' after known interactive commands
+        2. Try batch send (fast)
+        3. If batch fails, fallback to one-by-one send with real-time detection
 
         Args:
             config_commands: Configuration commands to send
@@ -102,7 +148,65 @@ class RuijieTelnetEnhanced(RuijieOSBase):
         if enter_config_mode:
             output += self.config_mode()
 
-        # Interactive prompt patterns to detect
+        # Preprocess: Insert 'yes' after known interactive commands
+        processed_commands = self._preprocess_interactive_commands(
+            config_commands
+        )
+
+        # Try batch send first (fast path)
+        try:
+            output += self._send_config_batch(
+                processed_commands, read_timeout, delay_factor
+            )
+        except Exception as batch_error:
+            logging.warning(
+                "Ruijie device: Batch send failed, falling back to one-by-one: %s",
+                batch_error,
+            )
+            # Fallback to one-by-one send with real-time detection
+            output += self._send_config_one_by_one(
+                config_commands, read_timeout, delay_factor
+            )
+
+        # Exit config mode if requested
+        if exit_config_mode:
+            output += self.exit_config_mode()
+
+        return output
+
+    def _send_config_batch(
+        self, commands: list[str], read_timeout: int, delay_factor: float
+    ) -> str:
+        """
+        Send configuration commands in batch (fast).
+
+        This works when all interactive prompts have been pre-processed
+        with 'yes' responses inserted.
+        """
+        output = ""
+
+        # Batch send: Write all commands rapidly
+        for cmd in commands:
+            self.write_channel(f"{cmd}{self.RETURN}")
+            time.sleep(0.01)
+
+        # Read all output at once
+        # Use same default as Netmiko (2.0 seconds) to ensure complete output
+        output += self.read_channel_timing(
+            read_timeout=read_timeout, last_read=2.0
+        )
+
+        return output
+
+    def _send_config_one_by_one(
+        self, commands: list[str], read_timeout: int, delay_factor: float
+    ) -> str:
+        """
+        Send commands one-by-one with real-time prompt detection.
+
+        This is the fallback method when batch send fails.
+        """
+        output = ""
         interactive_patterns = [
             r"\[yes/no\]",
             r"\[y/n\]",
@@ -110,15 +214,14 @@ class RuijieTelnetEnhanced(RuijieOSBase):
         ]
 
         # Send commands ONE BY ONE to detect prompts after each command
-        for cmd in config_commands:
+        for cmd in commands:
             # Write the command
             self.write_channel(f"{cmd}{self.RETURN}")
-            time.sleep(delay_factor * 0.05)  # Reduced from 0.1
+            time.sleep(0.05)
 
             # Read output after this command
-            # Use read_channel_timing to handle interactive prompts
             new_output = self.read_channel_timing(
-                read_timeout=10, last_read=0.5  # Reduced from 1.0
+                read_timeout=10, last_read=0.5
             )
             output += new_output
 
@@ -130,18 +233,14 @@ class RuijieTelnetEnhanced(RuijieOSBase):
                         "sending 'yes'",
                         cmd,
                     )
-                    # Send 'yes' to confirm BEFORE next command
+                    # Send 'yes' to confirm
                     self.write_channel(f"yes{self.RETURN}")
-                    time.sleep(delay_factor * 0.3)  # Reduced from 0.5
+                    time.sleep(0.3)
                     # Read the confirmation response
                     output += self.read_channel_timing(
-                        read_timeout=30, last_read=0.5  # Reduced from 1.0
+                        read_timeout=30, last_read=0.5
                     )
                     break
-
-        # Exit config mode if requested
-        if exit_config_mode:
-            output += self.exit_config_mode()
 
         return output
 
