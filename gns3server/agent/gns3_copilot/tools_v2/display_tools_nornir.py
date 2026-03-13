@@ -58,9 +58,13 @@ from gns3server.agent.gns3_copilot.utils import custom_netmiko  # noqa: F401
 # This is a safety measure in case the auto-registration on import doesn't work
 try:
     from gns3server.agent.gns3_copilot.utils.custom_netmiko import huawei_ce
+    from gns3server.agent.gns3_copilot.utils.custom_netmiko.ruijie_telnet import (
+        register_custom_device_type as register_ruijie_device_type,
+    )
 
     # Re-register to ensure device types are available
     huawei_ce.register_custom_device_type()
+    register_ruijie_device_type()
 
     # CRITICAL: Update netmiko.ssh_dispatcher platforms lists
     # The platforms variable is calculated at module import time in ssh_dispatcher

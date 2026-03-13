@@ -32,6 +32,7 @@ authentication or behavior patterns.
 
 Supported Drivers:
 - huawei_ce: HuaweiTelnetCE for CloudEngine devices (no authentication)
+- ruijie_telnet: RuijieTelnet for Ruijie devices (interactive prompt handling)
 
 Usage:
     from gns3server.agent.gns3_copilot.utils import custom_netmiko
@@ -59,4 +60,9 @@ try:
 except Exception as e:
     logger.warning(f"Failed to import Huawei CE driver: {e}", exc_info=True)
 
-__all__ = ["huawei_ce"]
+try:
+    from .ruijie_telnet import RuijieTelnetEnhanced  # noqa: F401
+except Exception as e:
+    logger.warning(f"Failed to import Ruijie driver: {e}", exc_info=True)
+
+__all__ = ["huawei_ce", "ruijie_telnet"]
