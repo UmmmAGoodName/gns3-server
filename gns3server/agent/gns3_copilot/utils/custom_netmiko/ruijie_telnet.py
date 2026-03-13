@@ -58,12 +58,12 @@ class RuijieTelnetEnhanced(RuijieOSBase):
     # Interactive command patterns that trigger [yes/no] prompts
     # These are commands that commonly require confirmation
     INTERACTIVE_PATTERNS = [
-        re.compile(r'^router-id\s+', re.IGNORECASE),  # OSPF/EIGRP/BGP router-id
-        re.compile(r'^erase\s+', re.IGNORECASE),        # erase startup-config
-        re.compile(r'^delete\s+', re.IGNORECASE),       # delete files
-        re.compile(r'^format\s+', re.IGNORECASE),       # format filesystem
-        re.compile(r'^reload\b', re.IGNORECASE),        # reload/reboot
-        re.compile(r'^boot\s+system\s+', re.IGNORECASE), # change boot image
+        re.compile(r'^router-id\s+', re.IGNORECASE),  # OSPF router-id
+        re.compile(r'^erase\s+', re.IGNORECASE),  # erase startup-config
+        re.compile(r'^delete\s+', re.IGNORECASE),  # delete files
+        re.compile(r'^format\s+', re.IGNORECASE),  # format filesystem
+        re.compile(r'^reload\b', re.IGNORECASE),  # reload/reboot
+        re.compile(r'^boot\s+system\s+', re.IGNORECASE),  # change boot image
     ]
 
     def __init__(
@@ -74,7 +74,8 @@ class RuijieTelnetEnhanced(RuijieOSBase):
         """Initialize RuijieTelnetEnhanced connection."""
         # Set default_enter for telnet (like Netmiko's RuijieOSTelnet)
         default_enter = kwargs.get("default_enter")
-        kwargs["default_enter"] = "\r\n" if default_enter is None else default_enter
+        if default_enter is None:
+            kwargs["default_enter"] = "\r\n"
         super().__init__(*args, **kwargs)
 
     def _preprocess_interactive_commands(
@@ -127,7 +128,8 @@ class RuijieTelnetEnhanced(RuijieOSBase):
 
         Args:
             config_commands: Configuration commands to send
-            **kwargs: Additional arguments (exit_config_mode, read_timeout, etc.)
+            **kwargs: Additional arguments (exit_config_mode, read_timeout,
+                      etc.)
 
         Returns:
             Output from configuration commands
@@ -160,7 +162,8 @@ class RuijieTelnetEnhanced(RuijieOSBase):
             )
         except Exception as batch_error:
             logging.warning(
-                "Ruijie device: Batch send failed, falling back to one-by-one: %s",
+                "Ruijie device: Batch send failed, "
+                "falling back to one-by-one: %s",
                 batch_error,
             )
             # Fallback to one-by-one send with real-time detection
@@ -229,8 +232,8 @@ class RuijieTelnetEnhanced(RuijieOSBase):
             for pattern in interactive_patterns:
                 if re.search(pattern, new_output, re.IGNORECASE):
                     logging.info(
-                        "Ruijie device: Detected interactive prompt after '%s', "
-                        "sending 'yes'",
+                        "Ruijie device: Detected interactive prompt "
+                        "after '%s', sending 'yes'",
                         cmd,
                     )
                     # Send 'yes' to confirm

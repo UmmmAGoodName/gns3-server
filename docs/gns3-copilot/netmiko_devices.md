@@ -207,7 +207,7 @@
 | HP | `hp_procurve_telnet` | Netmiko |
 | Huawei | `huawei_olt_telnet` | Netmiko |
 | Huawei | `huawei_telnet` | Netmiko |
-| Huawei | `huawei_telnet_ce` | Custom ✨ (GNS3) |
+| Huawei | `gns3_huawei_telnet_ce` | Custom ✨ (GNS3) |
 | Infinera | `infinera_packet_telnet` | Netmiko |
 | Ipinfusion | `ipinfusion_ocnos_telnet` | Netmiko |
 | Juniper | `juniper_junos_telnet` | Netmiko |

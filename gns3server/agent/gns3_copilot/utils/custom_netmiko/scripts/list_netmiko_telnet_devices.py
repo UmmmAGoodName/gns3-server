@@ -72,7 +72,7 @@ def register_custom_drivers() -> set:
             import huawei_ce
 
         # Store custom device types before registration
-        custom_devices.add("huawei_telnet_ce")
+        custom_devices.add("gns3_huawei_telnet_ce")
 
         # The driver auto-registers on import, but we can call it
         # explicitly
@@ -84,7 +84,29 @@ def register_custom_drivers() -> set:
     except Exception as e:
         # Log but don't fail
         print(
-            f"Warning: Failed to register custom drivers: {e}",
+            f"Warning: Failed to register Huawei CE driver: {e}",
+            file=sys.stderr
+        )
+
+    try:
+        # Import and register Ruijie Telnet driver
+        from gns3server.agent.gns3_copilot.utils.custom_netmiko \
+            import ruijie_telnet
+
+        # Store custom device types before registration
+        custom_devices.add("gns3_ruijie_telnet")
+
+        # The driver auto-registers on import, but we can call it
+        # explicitly
+        if hasattr(ruijie_telnet, 'register_custom_device_type'):
+            ruijie_telnet.register_custom_device_type()
+    except ImportError:
+        # Silently skip if custom drivers are not available
+        pass
+    except Exception as e:
+        # Log but don't fail
+        print(
+            f"Warning: Failed to register Ruijie driver: {e}",
             file=sys.stderr
         )
 

@@ -31,8 +31,11 @@ emulation environments where devices may have non-standard
 authentication or behavior patterns.
 
 Supported Drivers:
-- huawei_ce: HuaweiTelnetCE for CloudEngine devices (no authentication)
-- ruijie_telnet: RuijieTelnet for Ruijie devices (interactive prompt handling)
+- huawei_ce: GNS3HuaweiTelnetCE for CloudEngine devices (no authentication)
+- ruijie_telnet: RuijieTelnetEnhanced for Ruijie devices (interactive prompt handling)
+
+All drivers use 'gns3_' prefix to clearly distinguish them from Netmiko's
+built-in drivers.
 
 Usage:
     from gns3server.agent.gns3_copilot.utils import custom_netmiko
@@ -40,8 +43,9 @@ Usage:
     # Auto-registers all drivers on import
     from netmiko import ConnectHandler
 
+    # Huawei device
     device = {
-        "device_type": "huawei_telnet_ce",
+        "device_type": "gns3_huawei_telnet_ce",
         "host": "127.0.0.1",
         "port": 5000,
     }

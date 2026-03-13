@@ -11,8 +11,11 @@ This package contains Netmiko drivers optimized for GNS3 emulation environments 
 ```
 custom_netmiko/
 ├── __init__.py              # Package initialization, auto-registers all drivers
-├── huawei_ce.py             # Huawei CloudEngine custom driver
+├── huawei_ce.py             # Huawei CloudEngine custom driver (GNS3HuaweiTelnetCE)
+├── ruijie_telnet.py         # Ruijie OS custom driver (RuijieTelnetEnhanced)
 ├── README.md                # This file
+├── scripts/                 # Utility scripts
+│   └── list_netmiko_telnet_devices.py
 └── tests/                   # Unit tests
     ├── __init__.py
     └── test_huawei_ce.py    # Huawei CE driver tests
@@ -22,11 +25,11 @@ custom_netmiko/
 
 ### Huawei (`huawei_ce.py`)
 
-**Driver Name:** `HuaweiTelnetCE`
+**Driver Name:** `GNS3HuaweiTelnetCE`
 
 **Device Types:**
-- `huawei_telnet_ce` - Primary type
-- `huawei_ce` - Alias
+- `gns3_huawei_telnet_ce` - Primary type (GNS3 custom driver)
+- `huawei_telnet` - Standard Netmiko type (for devices with authentication)
 
 **Features:**
 - Skip authentication (for GNS3 devices without username/password)
@@ -47,7 +50,7 @@ from netmiko import ConnectHandler
 from gns3server.agent.gns3_copilot.utils import custom_netmiko
 
 device = {
-    "device_type": "huawei_telnet_ce",
+    "device_type": "gns3_huawei_telnet_ce",
     "host": "127.0.0.1",
     "port": 5000,
 }

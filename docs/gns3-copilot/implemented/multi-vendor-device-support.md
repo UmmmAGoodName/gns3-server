@@ -9,10 +9,10 @@ GNS3-Copilot supports network devices from multiple vendors through Netmiko and 
 | Vendor | Platform | Device Type | Protocol | Status |
 |--------|----------|-------------|----------|--------|
 | **Cisco** | `cisco_ios` | `cisco_ios_telnet` | Telnet | ✅ Tested |
-| **Huawei** | `huawei` | `huawei_telnet_ce` | Telnet | ✅ Tested (Custom Driver) |
+| **Huawei** | `huawei` | `gns3_huawei_telnet_ce` | Telnet | ✅ Tested (Custom Driver) |
 | **Ruijie (锐捷)** | `ruijie_os` | `gns3_ruijie_telnet` | Telnet | ✅ Tested (Custom Driver) |
 
-## Custom Huawei Driver (`HuaweiTelnetCE`)
+## Custom Huawei Driver (`GNS3HuaweiTelnetCE`)
 
 ### Problem Statement
 
@@ -39,7 +39,7 @@ CiscoBaseConnection (Cisco-style base class)
     ↓
 HuaweiBase (Huawei device base class) ← Inherits VRP support
     ↓
-HuaweiTelnetCE (Custom GNS3 driver) ← Overrides telnet_login only
+GNS3HuaweiTelnetCE (Custom GNS3 driver) ← Overrides telnet_login only
 ```
 
 **Why Inherit from HuaweiBase?**
@@ -49,7 +49,7 @@ HuaweiTelnetCE (Custom GNS3 driver) ← Overrides telnet_login only
 - ✅ Huawei paging disable (`screen-length 0 temporary`)
 - ✅ Minimal code changes - only override authentication
 
-### HuaweiTelnetCE Implementation
+### GNS3HuaweiTelnetCE Implementation
 
 #### Location
 ```
@@ -99,7 +99,7 @@ custom_netmiko/
 #### Limitations
 
 **Authentication Requirement:**
-- The `huawei_telnet_ce` driver is designed for GNS3 devices **without authentication**
+- The `gns3_huawei_telnet_ce` driver is designed for GNS3 devices **without authentication**
 - If your Huawei device has been configured with a username/password:
   - **Option 1**: Use the standard `huawei_telnet` driver (requires username/password)
   - **Option 2**: Remove authentication from the device for GNS3 testing
@@ -109,7 +109,7 @@ custom_netmiko/
 
 | Scenario | Use Driver | Requires Credentials? |
 |----------|-----------|----------------------|
-| GNS3 Huawei (fresh, no auth) | `huawei_telnet_ce` | ❌ No |
+| GNS3 Huawei (fresh, no auth) | `gns3_huawei_telnet_ce` | ❌ No |
 | GNS3 Huawei (configured with username/password) | `huawei_telnet` | ✅ Yes |
 | Real Huawei hardware | `huawei_telnet` | ✅ Yes |
 
@@ -187,12 +187,12 @@ def register_custom_device_type() -> None:
     sd = importlib.import_module("netmiko.ssh_dispatcher")
 
     # Register in CLASS_MAPPER (for ConnectHandler)
-    sd.CLASS_MAPPER["huawei_telnet_ce"] = HuaweiTelnetCE
-    sd.CLASS_MAPPER["huawei_ce"] = HuaweiTelnetCE
+    sd.CLASS_MAPPER["gns3_huawei_telnet_ce"] = GNS3HuaweiTelnetCE
+    sd.CLASS_MAPPER["huawei_ce"] = GNS3HuaweiTelnetCE
 
     # Register in CLASS_MAPPER_BASE (for base class definitions)
-    sd.CLASS_MAPPER_BASE["huawei_telnet_ce"] = HuaweiTelnetCE
-    sd.CLASS_MAPPER_BASE["huawei_ce"] = HuaweiTelnetCE
+    sd.CLASS_MAPPER_BASE["gns3_huawei_telnet_ce"] = GNS3HuaweiTelnetCE
+    sd.CLASS_MAPPER_BASE["huawei_ce"] = GNS3HuaweiTelnetCE
 
     # CRITICAL: Rebuild static lists
     sd.platforms = list(sd.CLASS_MAPPER.keys())
@@ -369,7 +369,7 @@ with ConnectHandler(**device) as conn:
 Device type and platform are extracted from GNS3 node tags:
 
 ```
-device_type:huawei_telnet_ce    → Netmiko device type (precise)
+device_type:gns3_huawei_telnet_ce    → Netmiko device type (precise)
 platform:huawei                  → Nornir platform (high-level)
 ```
 
@@ -378,7 +378,7 @@ platform:huawei                  → Nornir platform (high-level)
 | Vendor | Device Type Tag | Platform Tag |
 |--------|----------------|--------------|
 | Cisco IOS | `device_type:cisco_ios_telnet` | `platform:cisco_ios` |
-| Huawei CE | `device_type:huawei_telnet_ce` | `platform:huawei` |
+| Huawei CE | `device_type:gns3_huawei_telnet_ce` | `platform:huawei` |
 | Ruijie | `device_type:gns3_ruijie_telnet` | `platform:ruijie_os` |
 
 ### Nornir Best Practice: Host-Level Connection Configuration
@@ -420,7 +420,7 @@ Defaults Level (data.location)
 # Had to create multiple groups dynamically
 groups = {
     "cisco_ios_telnet": {"device_type": "cisco_ios_telnet", ...},
-    "huawei_telnet": {"device_type": "huawei_telnet_ce", ...},
+    "huawei_telnet": {"device_type": "gns3_huawei_telnet_ce", ...},
     "juniper_junos": {"device_type": "juniper_junos_telnet", ...},
 }
 # Each host assigned to its vendor-specific group
@@ -548,7 +548,7 @@ groups = {
 
 ```python
 # Host level (highest priority)
-host["connection_options"]["netmiko"]["extras"]["device_type"] = "huawei_telnet_ce"
+host["connection_options"]["netmiko"]["extras"]["device_type"] = "gns3_huawei_telnet_ce"
 
     ↓ OVERRIDES
 
@@ -578,7 +578,7 @@ from gns3server.agent.gns3_copilot.utils import custom_netmiko
 
 # Custom driver auto-registers on import
 device = {
-    "device_type": "huawei_telnet_ce",
+    "device_type": "gns3_huawei_telnet_ce",
     "host": "127.0.0.1",
     "port": 5000,
     # No username/password needed!
@@ -638,7 +638,7 @@ inventory = {
                 "groups": ["network_devices"],
                 "connection_options": {
                     "netmiko": {
-                        "extras": {"device_type": "huawei_telnet_ce"}
+                        "extras": {"device_type": "gns3_huawei_telnet_ce"}
                     }
                 }
             },
@@ -674,7 +674,7 @@ nr = InitNornir(inventory=inventory)
 result = nr.run(task=send_commands, commands=["display version"])
 
 # Each device gets vendor-specific command handling
-# huawei-sw1 uses huawei_telnet_ce driver
+# huawei-sw1 uses gns3_huawei_telnet_ce driver
 # cisco-r1 uses cisco_ios_telnet driver
 ```
 
@@ -746,22 +746,22 @@ gns3server/agent/gns3_copilot/
 ```python
 # test_netmiko_custom.py
 
-class TestHuaweiTelnetCEDriver(unittest.TestCase):
+class TestGNS3HuaweiTelnetCEDriver(unittest.TestCase):
     def test_device_type_registered(self):
-        """Verify huawei_telnet_ce is in Netmiko CLASS_MAPPER"""
+        """Verify gns3_huawei_telnet_ce is in Netmiko CLASS_MAPPER"""
         from netmiko.ssh_dispatcher import CLASS_MAPPER
-        self.assertIn("huawei_telnet_ce", CLASS_MAPPER)
+        self.assertIn("gns3_huawei_telnet_ce", CLASS_MAPPER)
 
     def test_inheritance_from_huawei_base(self):
         """Verify inherits from HuaweiBase"""
         from netmiko.huawei.huawei import HuaweiBase
-        self.assertTrue(issubclass(HuaweiTelnetCE, HuaweiBase))
+        self.assertTrue(issubclass(GNS3HuaweiTelnetCE, HuaweiBase))
 
     def test_vrp_methods_available(self):
         """Verify VRP-specific methods are available"""
         methods = ["config_mode", "check_config_mode", "exit_config_mode"]
         for method in methods:
-            self.assertTrue(hasattr(HuaweiTelnetCE, method))
+            self.assertTrue(hasattr(GNS3HuaweiTelnetCE, method))
 ```
 
 **Running Tests:**
@@ -787,7 +787,7 @@ python gns3server/agent/gns3_copilot/utils/custom_netmiko/tests/test_huawei_ce.p
 - Precise driver type for Netmiko connection
 - Includes protocol information
 - **Actively used** to determine which Netmiko driver class to load
-- Examples: `huawei_telnet_ce`, `cisco_ios_telnet`
+- Examples: `gns3_huawei_telnet_ce`, `cisco_ios_telnet`
 
 ### Why Keep `platform` Field?
 
@@ -807,7 +807,7 @@ python gns3server/agent/gns3_copilot/utils/custom_netmiko/tests/test_huawei_ce.p
 
 | Platform | Device Type | Netmiko Usage | Notes |
 |----------|-------------|---------------|-------|
-| `huawei` | `huawei_telnet_ce` | ✅ Active | Custom driver for GNS3 |
+| `huawei` | `gns3_huawei_telnet_ce` | ✅ Active | Custom driver for GNS3 |
 | `cisco_ios` | `cisco_ios_telnet` | ✅ Active | Standard Netmiko driver |
 
 **Important:** For nornir_netmiko, only `device_type` in `connection_options` matters. The `platform` field is informational only.

@@ -57,7 +57,7 @@
 """
 Custom Netmiko device driver for Huawei devices in GNS3 emulation environment.
 
-This module provides a custom device type 'huawei_telnet_ce' for Huawei
+This module provides a custom device type 'gns3_huawei_telnet_ce' for Huawei
 network devices that connect via console without requiring authentication
 (username/password).
 
@@ -80,7 +80,7 @@ import time
 from netmiko.huawei.huawei import HuaweiBase
 
 
-class HuaweiTelnetCE(HuaweiBase):
+class GNS3HuaweiTelnetCE(HuaweiBase):
     """
     Custom Huawei device driver for GNS3 emulation.
 
@@ -98,7 +98,7 @@ class HuaweiTelnetCE(HuaweiBase):
         *args,
         **kwargs,
     ) -> None:
-        """Initialize HuaweiTelnetCE connection."""
+        """Initialize GNS3HuaweiTelnetCE connection."""
         # Set default device type for proper initialization
         # The '_telnet' suffix in device_type tells Netmiko to use
         # Telnet protocol
@@ -375,9 +375,9 @@ class HuaweiTelnetCE(HuaweiBase):
 # Register the custom device type with Netmiko
 def register_custom_device_type() -> None:
     """
-    Register the custom HuaweiTelnetCE device type with Netmiko.
+    Register the custom GNS3HuaweiTelnetCE device type with Netmiko.
 
-    This function adds 'huawei_telnet_ce' to both Netmiko's CLASS_MAPPER
+    This function adds 'gns3_huawei_telnet_ce' to both Netmiko's CLASS_MAPPER
     and CLASS_MAPPER_BASE so it can be used like any other built-in device
     type.
 
@@ -398,10 +398,10 @@ def register_custom_device_type() -> None:
 
     # Register the device type in both mappers
     # CLASS_MAPPER_BASE is used for base class definitions
-    sd.CLASS_MAPPER_BASE["huawei_telnet_ce"] = HuaweiTelnetCE
+    sd.CLASS_MAPPER_BASE["gns3_huawei_telnet_ce"] = GNS3HuaweiTelnetCE
 
     # CLASS_MAPPER is used by ConnectHandler for device type validation
-    sd.CLASS_MAPPER["huawei_telnet_ce"] = HuaweiTelnetCE
+    sd.CLASS_MAPPER["gns3_huawei_telnet_ce"] = GNS3HuaweiTelnetCE
 
     # CRITICAL: Update the static platforms lists
     # These lists are computed at module import time and won't
