@@ -231,29 +231,191 @@ platform:huawei                  → Nornir platform (high-level)
 | Cisco IOS | `device_type:cisco_ios_telnet` | `platform:cisco_ios` |
 | Huawei CE | `device_type:huawei_telnet_ce` | `platform:huawei` |
 
-### Automatic Group Generation
+### Nornir Best Practice: Host-Level Connection Configuration
 
-Nornir groups are dynamically generated based on device type:
+The system uses **Nornir's configuration priority** (host > group > defaults) to handle multi-vendor environments efficiently:
 
 ```python
 # From get_gns3_device_port.py
-if device_type and "_telnet" in device_type:
-    group_name = f"{platform}_telnet"  # e.g., "huawei_telnet"
-else:
-    group_name = platform  # e.g., "cisco_ios"
-
 hosts_data[device_name] = {
     "port": console_port,
-    "groups": [group_name],
-    "device_type": device_type,
-    "platform": platform,
+    "platform": platform,  # Reserved for future use (NAPALM, scrapli)
+    "groups": ["network_devices"],  # All devices share one group
+    "connection_options": {
+        "netmiko": {
+            "extras": {"device_type": device_type}  # Device-specific driver
+        }
+    },
 }
 ```
 
-**Why Dynamic Groups?**
-- Single Nornir instance can handle multiple vendors
-- Each device gets correct connection parameters
-- Vendor-specific commands work automatically
+**Why Host-Level `connection_options`?**
+- ✅ Each device has its own `device_type` (host-level config)
+- ✅ All devices share common settings via group inheritance (`hostname`, `timeout`)
+- ✅ No need to dynamically create multiple groups for each device type
+- ✅ Cleaner code structure - single generic group for all devices
+- ✅ Follows Nornir best practice: "configuration proximity"
+
+**Configuration Priority:**
+```
+Host Level (connection_options.device_type)
+    ↓ OVERRIDES
+Group Level (hostname, timeout, username, password)
+    ↓ OVERRIDES
+Defaults Level (data.location)
+```
+
+**Before (Old Approach - Dynamic Groups):**
+```python
+# Had to create multiple groups dynamically
+groups = {
+    "cisco_ios_telnet": {"device_type": "cisco_ios_telnet", ...},
+    "huawei_telnet": {"device_type": "huawei_telnet_ce", ...},
+    "juniper_junos": {"device_type": "juniper_junos_telnet", ...},
+}
+# Each host assigned to its vendor-specific group
+```
+
+**After (Current Approach - Host-Level Config):**
+```python
+# Single group for shared settings
+groups = {
+    "network_devices": {
+        "hostname": "127.0.0.1",
+        "timeout": 120,
+        "username": "",
+        "password": "",
+    }
+}
+# Each host has device-specific connection_options
+# Host config overrides group config automatically
+```
+
+## Architecture Evolution
+
+### Problem: Multi-Vendor Device Support
+
+**Initial Challenge:**
+```
+Topology: Cisco R1 + Huawei SW1 + Juniper SRX
+    ↓
+Need: Different Netmiko drivers for each device
+    ↓
+Question: How to configure Nornir for multiple device types?
+```
+
+### Solution Evolution
+
+#### ❌ Approach 1: Single Group with First Device's Type (Initial Implementation)
+
+```python
+# PROBLEM: Only uses first device's configuration
+def _initialize_nornir(hosts_data):
+    first_device = next(iter(hosts_data.values()))
+    device_type = first_device["device_type"]  # Only one type!
+
+    return InitNornir(
+        inventory={
+            "options": {
+                "hosts": hosts_data,  # Has multiple device types
+                "groups": {
+                    "network_devices": {
+                        "connection_options": {
+                            "netmiko": {"extras": {"device_type": device_type}}
+                        }
+                    }
+                }
+            }
+        }
+    )
+```
+
+**Issue:** All devices use the first device's driver!
+- Cisco R1 → Uses Huawei driver (if Huawei is first) ❌
+- Huawei SW1 → Uses Cisco driver (if Cisco is first) ❌
+
+#### ❌ Approach 2: Dynamic Groups (Intermediate Solution)
+
+```python
+# COMPLEX: Create multiple groups dynamically
+groups = {}
+for host_data in hosts_data.values():
+    device_type = host_data["device_type"]
+    platform = host_data["platform"]
+    group_name = f"{platform}_telnet"  # e.g., "huawei_telnet"
+
+    if group_name not in groups:
+        groups[group_name] = {
+            "platform": platform,
+            "connection_options": {
+                "netmiko": {"extras": {"device_type": device_type}}
+            }
+        }
+
+    host_data["groups"] = [group_name]
+```
+
+**Issues:**
+- Complex logic to detect and create groups
+- Code duplication in multiple files
+- Had to delete helper functions (`_get_nornir_groups_config`, `_get_nornir_group`)
+- Not following Nornir best practices
+
+#### ✅ Approach 3: Host-Level Configuration (Current - Best Practice)
+
+```python
+# SIMPLE: Single group + host-level device_type
+hosts_data[device_name] = {
+    "port": console_port,
+    "platform": platform,  # Reserved for future use
+    "groups": ["network_devices"],  # All devices in one group
+    "connection_options": {  # Device-specific config
+        "netmiko": {
+            "extras": {"device_type": device_type}
+        }
+    }
+}
+
+# Single generic group for shared settings
+groups = {
+    "network_devices": {
+        "hostname": "127.0.0.1",
+        "timeout": 120,
+        "username": "",
+        "password": "",
+    }
+}
+```
+
+**Advantages:**
+- ✅ Clean, simple code
+- ✅ Follows Nornir best practice (host > group > defaults)
+- ✅ No dynamic group creation logic
+- ✅ Each device's `connection_options` overrides group settings automatically
+- ✅ Easy to extend with new device types
+
+### Configuration Priority Demonstration
+
+```python
+# Host level (highest priority)
+host["connection_options"]["netmiko"]["extras"]["device_type"] = "huawei_telnet_ce"
+
+    ↓ OVERRIDES
+
+# Group level (middle priority)
+group["hostname"] = "127.0.0.1"
+group["timeout"] = 120
+
+    ↓ OVERRIDES
+
+# Defaults level (lowest priority)
+defaults["data"]["location"] = "gns3"
+```
+
+**Result:**
+- Each device uses its own `device_type` from host level
+- All devices share `hostname`, `timeout` from group level
+- All devices share `data.location` from defaults level
 
 ## Usage Examples
 
@@ -314,33 +476,44 @@ from gns3server.agent.gns3_copilot.utils.custom_netmiko import huawei_ce
 huawei_ce.register_custom_device_type()
 
 # Initialize Nornir with mixed-vendor inventory
+# Using host-level connection_options (best practice)
 inventory = {
+    "plugin": "DictInventory",
     "options": {
         "hosts": {
             "huawei-sw1": {
                 "hostname": "127.0.0.1",
                 "port": 5001,
-                "platform": "huawei",
-                "device_type": "huawei_telnet_ce",
-                "groups": ["huawei_telnet"]
+                "platform": "huawei",  # Reserved for future use
+                "groups": ["network_devices"],
+                "connection_options": {
+                    "netmiko": {
+                        "extras": {"device_type": "huawei_telnet_ce"}
+                    }
+                }
             },
             "cisco-r1": {
                 "hostname": "127.0.0.1",
                 "port": 5002,
                 "platform": "cisco_ios",
-                "device_type": "cisco_ios_telnet",
-                "groups": ["cisco_ios_telnet"]
+                "groups": ["network_devices"],
+                "connection_options": {
+                    "netmiko": {
+                        "extras": {"device_type": "cisco_ios_telnet"}
+                    }
+                }
             }
         },
         "groups": {
-            "huawei_telnet": {
-                "platform": "huawei",
-                "device_type": "huawei_telnet_ce"
-            },
-            "cisco_ios_telnet": {
-                "platform": "cisco_ios",
-                "device_type": "cisco_ios_telnet"
+            "network_devices": {
+                "hostname": "127.0.0.1",  # Shared by all devices
+                "timeout": 120,
+                "username": "",
+                "password": "",
             }
+        },
+        "defaults": {
+            "data": {"location": "gns3"}
         }
     }
 }
@@ -351,6 +524,8 @@ nr = InitNornir(inventory=inventory)
 result = nr.run(task=send_commands, commands=["display version"])
 
 # Each device gets vendor-specific command handling
+# huawei-sw1 uses huawei_telnet_ce driver
+# cisco-r1 uses cisco_ios_telnet driver
 ```
 
 ### GNS3 Copilot Tool Usage
@@ -390,11 +565,21 @@ gns3server/agent/gns3_copilot/
 │   │   └── tests/                  # Unit tests
 │   │       ├── __init__.py
 │   │       └── test_huawei_ce.py   # Huawei CE driver tests
-│   └── get_gns3_device_port.py     # Device port extraction
+│   └── get_gns3_device_port.py     # Device port extraction with host-level config
 ├── tools_v2/
 │   ├── display_tools_nornir.py     # Multi-vendor display commands
+│   │   ├── _get_nornir_defaults()  # Returns default Nornir config
+│   │   └── _initialize_nornir()    # Single generic group + host-level device_type
 │   └── config_tools_nornir.py      # Multi-vendor config commands
+│       ├── _get_nornir_defaults()  # Returns default Nornir config
+│       └── _initialize_nornir()    # Single generic group + host-level device_type
 ```
+
+**Key Architectural Changes (2026-03-13):**
+- ❌ Removed: `_get_nornir_groups_config()` - No longer needed
+- ❌ Removed: `_get_nornir_group()` - No longer needed
+- ✅ Simplified: `_initialize_nornir()` - Uses single generic group
+- ✅ Updated: `get_gns3_device_port.py()` - Returns host-level `connection_options`
 
 ## Unit Testing
 
@@ -435,20 +620,39 @@ python gns3server/agent/gns3_copilot/utils/custom_netmiko/tests/test_huawei_ce.p
 
 **Platform (Nornir):**
 - High-level vendor identifier
-- Used for inventory grouping
+- **Reserved for future use** with plugins like NAPALM, scrapli
+- Used for metadata and logging
 - Examples: `huawei`, `cisco_ios`
+- ⚠️ **Not used by nornir_netmiko** (only `device_type` matters)
 
 **Device Type (Netmiko):**
-- Precise driver type
+- Precise driver type for Netmiko connection
 - Includes protocol information
+- **Actively used** to determine which Netmiko driver class to load
 - Examples: `huawei_telnet_ce`, `cisco_ios_telnet`
+
+### Why Keep `platform` Field?
+
+| Purpose | Plugin | Uses `platform`? |
+|---------|--------|------------------|
+| Connection driver | nornir_netmiko | ❌ No (uses `device_type`) |
+| Driver selection | NAPALM | ✅ Yes |
+| Driver selection | scrapli | ✅ Yes |
+| Metadata/Logging | General | ✅ Yes (future) |
+
+**Conclusion:** The `platform` field is kept for:
+1. **Future plugin support** (NAPALM, scrapli)
+2. **Debugging and logging** (vendor identification)
+3. **Data completeness** (industry standard practice)
 
 ### Mapping
 
-| Platform | Device Type | Notes |
-|----------|-------------|-------|
-| `huawei` | `huawei_telnet_ce` | Custom driver for GNS3 |
-| `cisco_ios` | `cisco_ios_telnet` | Standard Netmiko driver |
+| Platform | Device Type | Netmiko Usage | Notes |
+|----------|-------------|---------------|-------|
+| `huawei` | `huawei_telnet_ce` | ✅ Active | Custom driver for GNS3 |
+| `cisco_ios` | `cisco_ios_telnet` | ✅ Active | Standard Netmiko driver |
+
+**Important:** For nornir_netmiko, only `device_type` in `connection_options` matters. The `platform` field is informational only.
 
 ## Related Documentation
 
@@ -467,6 +671,18 @@ python gns3server/agent/gns3_copilot/utils/custom_netmiko/tests/test_huawei_ce.p
 
 _Implementation Date: 2026-03-12_
 
+_Last Updated: 2026-03-13 (Architecture refactored to host-level configuration)_
+
 _Status: ✅ Implemented - Custom Huawei driver for GNS3 emulation, multi-vendor support with Cisco IOS and Huawei tested_
 
+_Architecture: Nornir best practice - host-level connection_options with single generic group_
+
 _Unit Tests: ✅ 9/9 passing_
+
+_Changelog:_
+- **2026-03-13**: Refactored to use host-level `connection_options` instead of dynamic groups
+  - Removed `_get_nornir_groups_config()` and `_get_nornir_group()` helper functions
+  - Simplified `_initialize_nornir()` to use single generic group
+  - Updated `get_gns3_device_port.py()` to return host-level configuration
+  - Reserved `platform` field for future NAPALM/scrapli plugin support
+- **2026-03-12**: Initial implementation with custom Huawei driver

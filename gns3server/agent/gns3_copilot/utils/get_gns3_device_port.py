@@ -49,9 +49,13 @@ def get_device_ports_from_topology(
         {
             "device_name": {
                 "port": console_port,
-                "groups": ["platform_telnet"],  # Dynamically generated from platform/device_type
-                "device_type": "huawei_telnet",  # Extracted from tags
-                "platform": "huawei"              # Extracted from tags
+                "platform": "huawei",  # Extracted from tags
+                "groups": ["network_devices"],  # For inheriting shared settings
+                "connection_options": {
+                    "netmiko": {
+                        "extras": {"device_type": "huawei_telnet"}  # Extracted from tags
+                    }
+                }
             }
         }
         Devices that don't exist or missing console_port will not be included
@@ -128,18 +132,19 @@ def get_device_ports_from_topology(
                     platform,
                 )
 
-            # Add device to hosts_data
-            # Dynamically generate group name based on platform and device_type
-            if device_type and "_telnet" in device_type:
-                group_name = f"{platform}_telnet"
-            else:
-                group_name = platform
-
+            # Add device to hosts_data with connection_options at host level
+            # This is the Nornir best practice - each host has its own
+            # connection configuration (device_type), while sharing common
+            # settings (hostname, timeout) via group inheritance.
             hosts_data[device_name] = {
                 "port": node_info["console_port"],
-                "groups": [group_name],
-                "device_type": device_type,
                 "platform": platform,
+                "groups": ["network_devices"],  # For inheriting hostname, timeout, etc.
+                "connection_options": {
+                    "netmiko": {
+                        "extras": {"device_type": device_type}
+                    }
+                },
             }
 
         logger.info("Returning %d device port mappings", len(hosts_data))

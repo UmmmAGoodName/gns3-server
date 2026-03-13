@@ -104,53 +104,6 @@ def _get_nornir_defaults() -> dict[str, Any]:
     return {"data": {"location": "gns3"}}
 
 
-def _get_nornir_groups_config(
-    device_type: str = "cisco_ios_telnet", platform: str = "cisco_ios"
-) -> dict[str, Any]:
-    """
-    Get Nornir group configuration for network devices.
-
-    Args:
-        device_type: Device type for Netmiko (e.g., 'cisco_ios_telnet', 'huawei_telnet')
-        platform: Platform type for Nornir (e.g., 'cisco_ios', 'huawei')
-
-    Returns:
-        Dictionary containing Nornir group configuration
-    """
-    return {
-        "platform": platform,
-        "hostname": get_gns3_server_host(),
-        "timeout": 120,
-        "username": "",
-        "password": "",
-        "connection_options": {
-            "netmiko": {"extras": {"device_type": device_type}}
-        },
-    }
-
-
-def _get_nornir_group(
-    group_name: str = "network_devices_telnet",
-    device_type: str = "cisco_ios_telnet",
-    platform: str = "cisco_ios",
-) -> dict[str, Any]:
-    """
-    Get Nornir group configuration for a specific group.
-
-    Args:
-        group_name: Name of the group
-        device_type: Device type for Netmiko (e.g., 'cisco_ios_telnet', 'huawei_telnet')
-        platform: Platform type for Nornir (e.g., 'cisco_ios', 'huawei')
-
-    Returns:
-        Dictionary containing group configuration
-    """
-    # _get_nornir_groups_config now returns the group config directly
-    return _get_nornir_groups_config(
-        device_type=device_type, platform=platform
-    )
-
-
 class ExecuteMultipleDeviceCommands(BaseTool):
     """
     A READ-ONLY diagnostic tool for viewing network device configurations.
@@ -544,51 +497,38 @@ class ExecuteMultipleDeviceCommands(BaseTool):
     def _initialize_nornir(
         self, hosts_data: dict[str, dict[str, Any]]
     ) -> Nornir:
-        """Initialize Nornir with the provided hosts data."""
+        """
+        Initialize Nornir with the provided hosts data.
+
+        Each host now has its own connection_options (device_type), so we only
+        need a single generic group for shared configuration (hostname, timeout, etc.).
+        This is the Nornir best practice for multi-vendor environments.
+        """
         try:
-            # Extract device_type and platform from hosts_data
-            # Use the first device's configuration as default
-            device_type = None
-            platform = None
-
-            if hosts_data:
-                first_device_data = next(iter(hosts_data.values()), {})
-                device_type = first_device_data.get(
-                    "device_type", "cisco_ios_telnet"
-                )
-                platform = first_device_data.get("platform", "cisco_ios")
-
-                logger.info(
-                    "Extracted from tags: device_type=%s, platform=%s",
-                    device_type,
-                    platform,
-                )
-
-            # Get environment config with dynamic device_type and platform
-            groups_data = _get_nornir_groups_config(
-                device_type=device_type or "cisco_ios_telnet",
-                platform=platform or "cisco_ios",
-            )
             defaults = _get_nornir_defaults()
-
-            # Dynamically generate group name based on platform and device type
-            # e.g., "huawei_telnet", "cisco_ios_telnet", "juniper_junos"
-            actual_platform = platform or "cisco_ios"
-            if device_type and "_telnet" in device_type:
-                group_name = f"{actual_platform}_telnet"
-            else:
-                group_name = actual_platform
-
-            # Log nornir account information
             gns3_host = get_gns3_server_host()
 
+            # Create a single generic group for shared configuration
+            # Individual device types are handled at host level via connection_options
+            groups_data = {
+                "network_devices": {
+                    "hostname": gns3_host,
+                    "timeout": 120,
+                    "username": "",
+                    "password": "",
+                }
+            }
+
+            # Log device types being configured
+            device_types = [
+                host["connection_options"]["netmiko"]["extras"]["device_type"]
+                for host in hosts_data.values()
+            ]
             logger.info(
-                "Initializing Nornir: host=%s, platform=%s, device_type=%s, group=%s, timeout=%d",
+                "Initializing Nornir: host=%s, device_types=%s, hosts=%d",
                 gns3_host,
-                groups_data.get("platform"),
-                device_type,
-                group_name,
-                groups_data.get("timeout"),
+                list(set(device_types)),
+                len(hosts_data),
             )
 
             return InitNornir(
@@ -596,7 +536,7 @@ class ExecuteMultipleDeviceCommands(BaseTool):
                     "plugin": "DictInventory",
                     "options": {
                         "hosts": hosts_data,
-                        "groups": {group_name: groups_data},
+                        "groups": groups_data,
                         "defaults": defaults,
                     },
                 },
