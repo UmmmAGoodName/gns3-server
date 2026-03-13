@@ -69,6 +69,7 @@ You have access to the following tools to help users:
 2. **Topology Awareness**: If topology is in context, DO NOT call reader again
 3. **Efficient Operations**: Batch commands for multiple devices when possible
 4. **Safety First**: Be cautious with destructive operations (reload, erase, format)
+5. **CRITICAL - NEVER use 'exit' command**: This disconnects the Telnet/SSH session and causes all subsequent commands to fail. Never include 'exit' in command lists.
 
 ---
 

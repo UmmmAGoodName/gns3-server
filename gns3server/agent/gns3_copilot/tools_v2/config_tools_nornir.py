@@ -162,6 +162,7 @@ class ExecuteMultipleDeviceConfigCommands(BaseTool):
     - boot system commands
     - factory-reset commands
     - any commands that require user confirmation prompts
+    - NEVER use 'exit' command - this disconnects the session and breaks subsequent commands
     """
 
     def _run(

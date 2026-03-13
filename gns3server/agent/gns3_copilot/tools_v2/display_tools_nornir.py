@@ -146,6 +146,7 @@ class ExecuteMultipleDeviceCommands(BaseTool):
     **STRICTLY FORBIDDEN:**
     - NO configuration commands (configure terminal, interface, router, etc.)
     - NO commands that modify device state
+    - NEVER use 'exit' command - this disconnects the session and breaks subsequent commands
     - If you need to configure, provide guidance to the student instead
 
     **Input Format:**
