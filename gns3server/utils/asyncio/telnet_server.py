@@ -224,7 +224,8 @@ class AsyncioTelnetServer:
                         self._current_read.cancel()
 
             await connection.disconnected()
-            del self._connections[network_writer]
+            # Use pop() to avoid KeyError if connection was already removed
+            self._connections.pop(network_writer, None)
 
     async def close(self):
         for writer, connection in self._connections.items():
@@ -311,7 +312,7 @@ class AsyncioTelnetServer:
                         except:
                             log.debug(f"Timeout while sending data to client: {client_info}, closing and removing from connection table.")
                             connection.close()
-                            del self._connections[connection_key]
+                            self._connections.pop(connection_key, None)
 
     async def _read(self, cmd, buffer, location, reader):
         """ Reads next op from the buffer or reader"""
