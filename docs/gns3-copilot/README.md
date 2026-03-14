@@ -77,18 +77,22 @@ Tools for controlling network device lifecycle in GNS3 projects.
 **Status:** ✅ Implemented
 
 ### Multi-Vendor Device Support (`implemented/multi-vendor-device-support.md`)
-Multi-vendor network device support with custom Netmiko driver for Huawei devices.
+Multi-vendor network device support with custom Netmiko drivers for Huawei, Ruijie, and VPCS devices.
 
 **Key Features:**
-- Custom HuaweiTelnetCE driver for GNS3 emulation (no authentication)
+- Custom HuaweiTelnetCE driver for Huawei CloudEngine (no authentication)
+- Custom RuijieTelnetEnhanced driver for Ruijie OS (interactive command handling)
+- Custom VPCSTelnet driver for VPCS simulator (no authentication, ANSI code stripping)
 - Cisco IOS Telnet support
 - Dynamic device type detection from GNS3 tags
-- Automatic Nornir group generation
-- VRP-specific command handling (system-view, return confirmation)
+- Unified Nornir + Netmiko architecture
+- Vendor-specific command handling (VRP system-view, Ruijie interactive prompts, VPCS simple prompts)
 
 **Tested Vendors:**
 - Cisco IOS (Telnet)
 - Huawei CloudEngine (Telnet, custom driver)
+- Ruijie (锐捷) OS (Telnet, custom enhanced driver)
+- VPCS (Virtual PC Simulator, Telnet, custom driver)
 
 **Status:** ✅ Implemented
 
@@ -132,4 +136,4 @@ When adding new documentation:
 
 ---
 
-_Last updated: 2026-03-12_
+_Last updated: 2026-03-14_

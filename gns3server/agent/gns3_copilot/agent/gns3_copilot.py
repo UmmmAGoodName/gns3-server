@@ -93,7 +93,7 @@ from gns3server.agent.gns3_copilot.tools_v2 import GNS3StopNodeTool
 from gns3server.agent.gns3_copilot.tools_v2 import GNS3SuspendNodeTool
 from gns3server.agent.gns3_copilot.tools_v2 import GNS3TemplateTool
 from gns3server.agent.gns3_copilot.tools_v2 import GNS3UpdateNodeNameTool
-from gns3server.agent.gns3_copilot.tools_v2 import VPCSMultiCommands
+from gns3server.agent.gns3_copilot.tools_v2.vpcs_tools_netmiko import VPCSCommands
 
 # Set up logger for GNS3-Copilot
 logger = logging.getLogger(__name__)
@@ -126,7 +126,7 @@ LAB_AUTOMATION_ASSISTANT_MODE_TOOLS = [
     ExecuteMultipleDeviceCommands(),  # Execute show/display/debug commands
     # (READ-ONLY)
     ExecuteMultipleDeviceConfigCommands(),  # Execute configuration commands
-    VPCSMultiCommands(),  # Execute VPCS commands on multiple devices
+    VPCSCommands(),  # Execute VPCS commands using Netmiko
 ]
 
 # Default tools (legacy support - will be overridden by mode-specific tools)

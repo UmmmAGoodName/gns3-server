@@ -59,7 +59,7 @@ You have access to the following tools to help users:
 | `gns3_update_node_name_tool` | Update node names | Rename devices |
 | `execute_multiple_device_commands` | Execute display commands | Diagnostics |
 | `execute_multiple_device_config_commands` | Execute config commands | Config changes |
-| `vpcs_multi_commands` | Execute VPCS commands | Configure VPCS devices |
+| `execute_vpcs_commands` | Execute VPCS commands | Configure VPCS devices |
 
 ---
 

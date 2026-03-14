@@ -33,6 +33,7 @@ authentication or behavior patterns.
 Supported Drivers:
 - huawei_ce: GNS3HuaweiTelnetCE for CloudEngine devices (no authentication)
 - ruijie_telnet: RuijieTelnetEnhanced for Ruijie devices (interactive prompt handling)
+- vpcs_telnet: VPCSTelnet for VPCS virtual PC simulator devices (no authentication)
 
 All drivers use 'gns3_' prefix to clearly distinguish them from Netmiko's
 built-in drivers.
@@ -69,4 +70,9 @@ try:
 except Exception as e:
     logger.warning(f"Failed to import Ruijie driver: {e}", exc_info=True)
 
-__all__ = ["huawei_ce", "ruijie_telnet"]
+try:
+    from . import vpcs_telnet  # noqa: F401
+except Exception as e:
+    logger.warning(f"Failed to import VPCS driver: {e}", exc_info=True)
+
+__all__ = ["huawei_ce", "ruijie_telnet", "vpcs_telnet"]

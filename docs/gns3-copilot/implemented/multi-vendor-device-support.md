@@ -11,6 +11,166 @@ GNS3-Copilot supports network devices from multiple vendors through Netmiko and 
 | **Cisco** | `cisco_ios` | `cisco_ios_telnet` | Telnet | ✅ Tested |
 | **Huawei** | `huawei` | `gns3_huawei_telnet_ce` | Telnet | ✅ Tested (Custom Driver) |
 | **Ruijie (锐捷)** | `ruijie_os` | `gns3_ruijie_telnet` | Telnet | ✅ Tested (Custom Driver) |
+| **VPCS** | `vpcs` | `gns3_vpcs_telnet` | Telnet | ✅ Tested (Custom Driver) |
+
+## Custom VPCS Driver (`VPCSTelnet`)
+
+### Problem Statement
+
+VPCS (Virtual PC Simulator) is a lightweight virtual PC simulator used in GNS3 lab environments. Unlike network devices (routers/switches), VPCS devices:
+
+1. **No authentication** - Direct console access without username/password
+2. **Simple command interface** - No configuration modes
+3. **Simple prompt pattern** - `PC1>`, `PC2>`, etc.
+
+### Solution: Lightweight Custom Driver
+
+```
+BaseConnection (Netmiko base class)
+    ↓
+VPCSTelnet (Custom GNS3 driver)
+```
+
+**Why Not Use Standard Telnet Driver?**
+- Standard drivers attempt authentication (times out)
+- No support for VPCS-specific prompt patterns (`PC\d+>`)
+- No need for configuration mode handling
+
+### VPCSTelnet Implementation
+
+#### Location
+```
+gns3server/agent/gns3_copilot/utils/custom_netmiko/vpcs_telnet.py
+```
+
+#### Key Features
+
+**1. No Authentication**
+```python
+def telnet_login(self, pri_prompt_terminator=r"PC\d+>", ...):
+    # Send returns until VPCS prompt detected
+    for i in range(max_loops):
+        self.write_channel(self.RETURN)
+        output = self.read_channel()
+
+        if re.search(pri_prompt_terminator, output):
+            return output  # Success - VPCS prompt detected
+```
+
+**2. Simple Prompt Recognition**
+```
+PC1> ip 10.10.0.12/24 10.10.0.254
+PC1> ping 10.10.0.254
+```
+
+**3. No Configuration Mode**
+```python
+def check_config_mode(self) -> bool:
+    return False  # VPCS has no config mode
+
+def config_mode(self) -> str:
+    return ""  # No config mode to enter
+
+def exit_config_mode(self) -> str:
+    return ""  # No config mode to exit
+```
+
+**4. No Paging**
+```python
+def disable_paging(self) -> str:
+    return ""  # VPCS doesn't use paging
+```
+
+### VPCS Tool Usage
+
+The VPCS driver is used by the `execute_vpcs_commands` tool:
+
+```python
+from gns3server.agent.gns3_copilot.tools_v2.vpcs_tools_netmiko import VPCSCommands
+
+tool = VPCSCommands()
+result = tool._run(json.dumps({
+    "project_id": "<PROJECT_UUID>",
+    "device_configs": [
+        {
+            "device_name": "PC1",
+            "commands": [
+                "ip 10.10.0.12/24 10.10.0.254",
+                "ping 10.10.0.254"
+            ]
+        }
+    ]
+}))
+```
+
+### VPCS Built-in Template Configuration
+
+**✨ Automatic Tags - No Manual Configuration Required**
+
+VPCS nodes created from the built-in template automatically include the necessary tags:
+
+| Tag | Value | Purpose |
+|-----|-------|---------|
+| `platform` | `vpcs` | Platform identification |
+| `device_type` | `gns3_vpcs_telnet` | Netmiko driver selection |
+
+**Built-in Template Definition:**
+```python
+# gns3server/services/templates.py
+{
+    "template_id": uuid.uuid5(uuid.NAMESPACE_X500, "vpcs"),
+    "template_type": "vpcs",
+    "name": "VPCS",
+    "default_name_format": "PC{0}",
+    "category": "guest",
+    "symbol": "vpcs_guest",
+    "builtin": True,
+    "tags": ["platform:vpcs", "device_type:gns3_vpcs_telnet"],  # ✅ Auto-applied
+}
+```
+
+**User Benefits:**
+- ✅ **No manual tagging required** - Tags are applied automatically when creating VPCS nodes
+- ✅ **Automatic driver selection** - Copilot tools automatically use the correct Netmiko driver
+- ✅ **Consistent behavior** - All VPCS nodes from the built-in template work identically
+- ✅ **Zero configuration** - Users don't need to understand device_type tags
+
+**How It Works:**
+1. User creates a VPCS node from the built-in "VPCS" template
+2. Node automatically inherits the tags: `platform:vpcs` and `device_type:gns3_vpcs_telnet`
+3. Copilot tools read these tags and select the appropriate VPCS Netmiko driver
+4. Commands execute using the VPCS-optimized driver (no authentication, simple prompts)
+
+### Supported VPCS Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `ip` | Configure/show IP address | `ip 10.10.0.12/24 10.10.0.254` |
+| `ping` | Test connectivity | `ping 10.10.0.254` |
+| `arp` | Display ARP table | `arp` |
+| `show ip` | Show IP configuration | `show ip` |
+| `version` | Show VPCS version | `version` |
+| `save` | Save configuration | `save` |
+| `load` | Load configuration | `load` |
+
+### Architecture Benefits
+
+**Unified Tool Architecture:**
+- ✅ Uses Nornir for connection management (same as network device tools)
+- ✅ Uses Netmiko for command execution (consistent with other tools)
+- ✅ Follows same patterns as `config_tools_nornir.py` and `display_tools_nornir.py`
+- ✅ Simplified codebase - no need for separate telnetlib3 implementation
+
+**Migration from telnetlib3:**
+| Aspect | Old (telnetlib3) | New (Netmiko + Nornir) |
+|--------|-----------------|-------------------------|
+| Library | telnetlib3 | Netmiko |
+| Framework | Manual threading | Nornir |
+| Code Lines | ~490 lines | ~580 lines (with better structure) |
+| Consistency | Unique implementation | Same as other tools |
+| Maintenance | Separate code path | Unified architecture |
+
+---
 
 ## Custom Huawei Driver (`GNS3HuaweiTelnetCE`)
 
@@ -375,11 +535,18 @@ platform:huawei                  → Nornir platform (high-level)
 
 **Tag Examples:**
 
-| Vendor | Device Type Tag | Platform Tag |
-|--------|----------------|--------------|
-| Cisco IOS | `device_type:cisco_ios_telnet` | `platform:cisco_ios` |
-| Huawei CE | `device_type:gns3_huawei_telnet_ce` | `platform:huawei` |
-| Ruijie | `device_type:gns3_ruijie_telnet` | `platform:ruijie_os` |
+| Vendor | Device Type Tag | Platform Tag | Template Source |
+|--------|----------------|--------------|------------------|
+| Cisco IOS | `device_type:cisco_ios_telnet` | `platform:cisco_ios` | User appliance |
+| Huawei CE | `device_type:gns3_huawei_telnet_ce` | `platform:huawei` | User appliance |
+| Ruijie | `device_type:gns3_ruijie_telnet` | `platform:ruijie_os` | User appliance |
+| **VPCS** | `device_type:gns3_vpcs_telnet` | `platform:vpcs` | **Built-in ✅** |
+
+**VPCS Built-in Template:**
+- VPCS has a **built-in template** with pre-configured tags
+- Tags are **automatically applied** when creating VPCS nodes
+- No manual configuration required - works out of the box
+- Other devices require users to import appliances and configure tags manually
 
 ### Nornir Best Practice: Host-Level Connection Configuration
 
@@ -711,24 +878,35 @@ gns3server/agent/gns3_copilot/
 │   ├── custom_netmiko/            # Custom Netmiko drivers package
 │   │   ├── __init__.py             # Package initialization
 │   │   ├── huawei_ce.py            # Huawei CloudEngine driver
-│   │   ├── ruijie_telnet.py        # Ruijie enhanced driver (NEW)
+│   │   ├── ruijie_telnet.py        # Ruijie enhanced driver
+│   │   ├── vpcs_telnet.py          # VPCS simulator driver (NEW)
 │   │   ├── README.md               # Driver development guide
 │   │   └── tests/                  # Unit tests
 │   │       ├── __init__.py
 │   │       └── test_huawei_ce.py   # Huawei CE driver tests
 │   └── get_gns3_device_port.py     # Device port extraction with host-level config
-│       ├── _expand_multiline_commands()   # Expand banner commands (NEW)
-│       └── _error_handling()              # device_type missing errors (NEW)
+│       ├── _expand_multiline_commands()   # Expand banner commands
+│       └── _error_handling()              # device_type missing errors
 ├── tools_v2/
 │   ├── display_tools_nornir.py     # Multi-vendor display commands
 │   │   ├── _get_nornir_defaults()  # Returns default Nornir config
 │   │   └── _initialize_nornir()    # Single generic group + host-level device_type
-│   └── config_tools_nornir.py      # Multi-vendor config commands
-│       ├── _get_nornir_defaults()  # Returns default Nornir config
-│       └── _initialize_nornir()    # Single generic group + host-level device_type
-│       ├── _expand_multiline_commands()   # Expand banner commands (NEW)
-│       └── _error_handling()              # device_type validation (NEW)
+│   ├── config_tools_nornir.py      # Multi-vendor config commands
+│   │   ├── _get_nornir_defaults()  # Returns default Nornir config
+│   │   └── _initialize_nornir()    # Single generic group + host-level device_type
+│   │   ├── _expand_multiline_commands()   # Expand banner commands
+│   │   └── _error_handling()              # device_type validation
+│   └── vpcs_tools_netmiko.py      # VPCS commands using Nornir + Netmiko (NEW)
+│       ├── VPCSCommands           # VPCS tool class
+│       └── _initialize_nornir()    # VPCS device inventory setup
 ```
+
+**Key Architectural Changes (2026-03-14):**
+- ❌ Removed: `vpcs_tools_telnetlib3.py` - Replaced with Netmiko implementation
+- ✅ Added: `vpcs_telnet.py` - Custom VPCS driver for Netmiko
+- ✅ Added: `vpcs_tools_netmiko.py` - VPCS tool using Nornir + Netmiko
+- ✅ Simplified: Unified tool architecture - all tools use Nornir + Netmiko
+- ✅ Updated: Module structure - all tools follow same pattern
 
 **Key Architectural Changes (2026-03-13):**
 - ❌ Removed: `_get_nornir_groups_config()` - No longer needed
@@ -829,15 +1007,21 @@ python gns3server/agent/gns3_copilot/utils/custom_netmiko/tests/test_huawei_ce.p
 
 _Implementation Date: 2026-03-12_
 
-_Last Updated: 2026-03-13 (Added Ruijie driver, multi-line command expansion, and configuration safety)_
+_Last Updated: 2026-03-14 (Added VPCS driver and unified tool architecture)_
 
-_Status: ✅ Implemented - Custom drivers for Huawei and Ruijie, multi-vendor support with Cisco IOS, Huawei, and Ruijie tested_
+_Status: ✅ Implemented - Custom drivers for Huawei, Ruijie, and VPCS; multi-vendor support with Cisco IOS, Huawei, Ruijie, and VPCS tested_
 
 _Architecture: Nornir best practice - host-level connection_options with single generic group_
 
 _Unit Tests: ✅ 9/9 passing_
 
 _Changelog:_
+- **2026-03-14**: Added VPCS support and unified tool architecture
+  - Implemented `VPCSTelnet` custom Netmiko driver for VPCS simulator
+  - Replaced `vpcs_tools_telnetlib3.py` with `vpcs_tools_netmiko.py`
+  - Unified all tools to use Nornir + Netmiko architecture
+  - Removed dependency on telnetlib3 for VPCS devices
+  - Improved code consistency and maintainability
 - **2026-03-13 (Evening)**: Added Ruijie enhanced driver and interactive command handling
   - Implemented `RuijieTelnetEnhanced` with hybrid batch/fallback strategy
   - Added automatic `yes` insertion for known interactive commands (`router-id`, `erase`, etc.)

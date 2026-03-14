@@ -1,16 +1,27 @@
 # Netmiko Supported Devices
 
 **Netmiko Version:** 4.6.0
-**Generated:** 2026-03-12 23:00:41
+**Generated:** 2026-03-14 13:10:00
+**Last Updated:** 2026-03-14 (Added VPCS support)
 
 ---
 
 ## Summary
 
-- **Total Device Types:** 365
+- **Total Device Types:** 366
 - **SSH Devices:** 154
-- **Telnet Devices:** 54
-- **Custom Devices:** 2
+- **Telnet Devices:** 55
+- **Custom Devices:** 3
+
+## Custom GNS3 Drivers
+
+GNS3-Copilot includes custom Netmiko drivers optimized for GNS3 emulation:
+
+| Platform | Device Type | Description |
+|----------|-------------|-------------|
+| Huawei CE | `gns3_huawei_telnet_ce` | Huawei CloudEngine driver with no authentication |
+| Ruijie | `gns3_ruijie_telnet` | Ruijie OS enhanced driver with interactive command handling |
+| VPCS | `gns3_vpcs_telnet` | VPCS simulator driver with ANSI code stripping |
 
 ## SSH Supported Devices
 
@@ -224,6 +235,7 @@
 | Ruijie (锐捷) | `ruijie_os_telnet` | Netmiko |
 | Ruijie (锐捷) | `gns3_ruijie_telnet` | Custom ✨ (GNS3 Enhanced) |
 | Supermicro | `supermicro_smis_telnet` | Netmiko |
+| VPCS | `gns3_vpcs_telnet` | Custom ✨ (GNS3 VPCS Simulator) |
 | Telcosystems | `telcosystems_binos_telnet` | Netmiko |
 | Teldat | `teldat_cit_telnet` | Netmiko |
 | Tplink | `tplink_jetstream_telnet` | Netmiko |
