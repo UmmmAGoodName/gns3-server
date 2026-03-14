@@ -10,7 +10,7 @@ GNS3-Copilot provides tools for managing the lifecycle of network devices and to
 
 **Tool Name:** `get_gns3_templates`
 
-**Description:** Retrieves all available device templates from the GNS3 server, including template names, IDs, and types.
+**Description:** Retrieves all available device templates from the GNS3 server, including template names, IDs, and types. Filters out built-in utility templates that are not useful for network device configuration.
 
 **Input:**
 ```json
@@ -24,26 +24,47 @@ GNS3-Copilot provides tools for managing the lifecycle of network devices and to
     {
       "name": "Cisco IOSv",
       "template_id": "uuid-of-template",
-      "template_type": "router"
+      "template_type": "qemu"
     },
     {
-      "name": "Ethernet switch",
+      "name": "VPCS",
       "template_id": "uuid-of-template2",
-      "template_type": "switch"
+      "template_type": "vpcs"
     }
   ]
 }
 ```
 
 **Features:**
-- Lists all available device templates
+- Lists all available device templates for network labs
+- Filters out built-in utility templates (see filtered list below)
 - No input required (connects to configured GNS3 server)
 - Returns template_id needed for node creation
+- Logs total templates, filtered count, and remaining count
+
+**Filtered Templates:**
+The following built-in utility templates are excluded as they are not actual network devices:
+- `atm_switch` - ATM switch
+- `cloud` - Cloud
+- `ethernet_hub` - Ethernet hub
+- `ethernet_switch` - Ethernet switch (built-in, not user appliances)
+- `frame_relay_switch` - Frame Relay switch
+- `nat` - NAT device
+
+**Retained Template Types:**
+- `vpcs` - Virtual PC Simulator
+- `dynamips` - Cisco router simulator (IOSv, IOSv-L2, etc.)
+- `iou` - Cisco IOS on Unix
+- `qemu` - QEMU virtual machines
+- `docker` - Docker containers
+- `virtualbox` - VirtualBox VMs
+- `vmware` - VMware VMs
 
 **Use Cases:**
 - Discover available device types before creating nodes
 - Get template_id for GNS3CreateNodeTool
 - Template inventory management
+- Focus on network devices rather than utility templates
 
 ### GNS3CreateNodeTool 🆕
 
@@ -468,6 +489,7 @@ Starting 3 node(s), please wait...
 | **Suspended** | ✅ Yes     | ✅ Yes     | ❌ No         | ✅ Yes       |
 
 *Except special node types: cloud, nat, ethernet_switch, ethernet_hub, frame_relay_switch, atm_switch
+Note: These special node types are filtered out by GNS3TemplateTool and won't appear in template listings for network lab creation.
 
 ## Copilot Mode Integration
 
@@ -885,4 +907,12 @@ logger.info("Suspend command sent for node %s (%s)", node_id, node.name)
 
 _Implementation Date: 2026-03-12_
 
+_Last Updated: 2026-03-14 (Added template filtering to exclude built-in utility templates)_
+
 _Status: ✅ Implemented - Topology management tools available in both modes. Full lifecycle management (start/stop/suspend) available in Lab Automation Assistant Mode_
+
+_Changelog:_
+- **2026-03-14**: Added template filtering
+  - `GNS3TemplateTool` now filters out built-in utility templates (cloud, nat, ethernet_hub, ethernet_switch, frame_relay_switch, atm_switch)
+  - Focuses on network devices suitable for lab configuration
+  - Logs filtered count for transparency

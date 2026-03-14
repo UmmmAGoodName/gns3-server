@@ -28,6 +28,7 @@ GNS3 template retrieval tool for device discovery.
 
 Provides functionality to retrieve all available device templates
 from a GNS3 server, including template names, IDs, and types.
+Filters out built-in utility templates that are not useful for network labs.
 """
 
 import json
@@ -43,11 +44,42 @@ from gns3server.agent.gns3_copilot.gns3_client import get_gns3_connector
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Built-in templates to filter out (utility templates, not actual network devices)
+FILTERED_TEMPLATES = {
+    "atm_switch",          # ATM switch
+    "cloud",               # Cloud
+    "ethernet_hub",        # Ethernet hub
+    "ethernet_switch",     # Ethernet switch (built-in)
+    "frame_relay_switch",  # Frame Relay switch
+    "nat",                 # NAT device
+}
+
+
+def should_filter_template(template: dict[str, Any]) -> bool:
+    """
+    Determine whether a template should be filtered out.
+
+    Filter condition:
+    1. Template type is in the filter list (exact match)
+
+    Args:
+        template: Template dictionary
+
+    Returns:
+        True if template should be filtered, False if it should be kept
+    """
+    template_type = template.get("template_type", "")
+
+    # Check if template_type is in filter list
+    # This is the most reliable way to identify built-in utility templates
+    return template_type in FILTERED_TEMPLATES
+
 
 class GNS3TemplateTool(BaseTool):
     """
     LangChain tool to retrieve available device templates from GNS3 server.
     Connects to GNS3 server and extracts name, template_id, and template_type.
+    Filters out built-in utility templates that are not useful for network labs.
 
     **Input:**
     No input required. Connects to GNS3 server at default URL.
@@ -55,12 +87,24 @@ class GNS3TemplateTool(BaseTool):
     **Output:**
     Dict with list of dicts (name, template_id, template_type).
     If error, returns dict with error message.
+
+    **Filtered Templates:**
+    The following built-in utility templates are excluded:
+    - ATM switch
+    - Cloud
+    - Ethernet hub
+    - Ethernet switch (built-in)
+    - Frame Relay switch
+    - NAT
     """
 
     name: str = "get_gns3_templates"
     description: str = """
-    Retrieves available device templates from GNS3 server.
+    Retrieves available device templates from GNS3 server for network labs.
     Returns dict with list of dicts (name, template_id, template_type).
+    Filters out built-in utility templates (ATM switch, Cloud, Ethernet hub,
+    Ethernet switch, Frame Relay switch, NAT) as they are not useful for
+    network device configuration.
     No input required.
     If connection fails, returns dict with error message.
     """
@@ -96,23 +140,33 @@ class GNS3TemplateTool(BaseTool):
 
             # Retrieve all available templates
             templates = gns3_server.get_templates()
-            # Extract name, template_id, and template_type
-            template_info = [
-                {
+
+            # Filter out utility templates and extract relevant info
+            template_info = []
+            filtered_count = 0
+            for template in templates:
+                # Check if template should be filtered
+                if should_filter_template(template):
+                    filtered_count += 1
+                    logger.debug("Filtered out template: %s", template.get("name"))
+                    continue
+
+                # Extract name, template_id, and template_type
+                template_info.append({
                     "name": template.get("name", "N/A"),
                     "template_id": template.get("template_id", "N/A"),
                     "template_type": template.get("template_type", "N/A"),
-                }
-                for template in templates
-            ]
+                })
 
             # Return JSON-formatted result with full logging
             result = {"templates": template_info}
             logger.info(
-                "Template retrieval completed. Total: %d. Result: %s",
+                "Template retrieval completed. Total: %d, Filtered: %d, Remaining: %d",
+                len(templates),
+                filtered_count,
                 len(template_info),
-                json.dumps(result, indent=2, ensure_ascii=False),
             )
+            logger.debug("Result: %s", json.dumps(result, indent=2, ensure_ascii=False))
             return result
 
         except Exception as e:
