@@ -271,25 +271,25 @@ The tool automatically detects node types and calculates optimal wait times:
 
 | Device Type | Base Time | Per Additional Node | Example (5 nodes) |
 |-------------|-----------|-------------------|-------------------|
-| **VPCS** | 10s | +2s | 18s total |
-| **IOU** | 20s | +3s | 32s total |
-| **Mixed VPCS/IOU** | 20s | +2s | 28s total |
+| **VPCS** | 15s | +2s | 23s total |
+| **IOU** | 25s | +3s | 37s total |
+| **Mixed VPCS/IOU** | 25s | +2s | 33s total |
 | **QEMU/Dynamips/Docker/VMs** | 120s | +10s | 160s total |
 | **Mixed (any slow device)** | 120s | +10s | 160s total |
 
 **How It Works:**
 1. Retrieves node information including `node_type`
 2. Checks if all nodes are fast devices (VPCS/IOU only)
-3. If all fast: Uses max(10s, 20s) base + 2s per extra node
+3. If all fast: Uses max(15s, 25s) base + 2s per extra node
 4. If any slow device present: Uses 120s base + 10s per extra node
 5. Logs the detected device types and chosen strategy
 
 **Performance Improvements:**
-- ⚡ **1 VPCS node**: 140s → 10s (93% faster)
-- ⚡ **5 VPCS nodes**: 180s → 18s (90% faster)
-- ⚡ **1 IOU node**: 140s → 20s (86% faster)
-- ⚡ **5 IOU nodes**: 180s → 32s (82% faster)
-- ⚡ **Mixed VPCS/IOU**: 180s → 28s (84% faster)
+- ⚡ **1 VPCS node**: 140s → 15s (89% faster)
+- ⚡ **5 VPCS nodes**: 180s → 23s (87% faster)
+- ⚡ **1 IOU node**: 140s → 25s (82% faster)
+- ⚡ **5 IOU nodes**: 180s → 37s (79% faster)
+- ⚡ **Mixed VPCS/IOU**: 180s → 33s (82% faster)
 
 **Use Cases:**
 - Automated lab deployment
@@ -301,6 +301,9 @@ The tool automatically detects node types and calculates optimal wait times:
 - Retrieves node type via `node.get()` before starting
 - Calculates wait time using `calculate_startup_time()` function
 - Uses device-specific `NODE_STARTUP_TIME` configuration
+  * VPCS: 15s base + 2s per node (conservative for slower hardware)
+  * IOU: 25s base + 3s per node (accounts for IOU initialization overhead)
+  * Other: 120s base + 10s per node (conservative for full emulators)
 - Logs device types and selected wait strategy
 - Progress bar displays calculated wait time
 
@@ -948,9 +951,10 @@ _Status: ✅ Implemented - Topology management tools available in both modes. Fu
 _Changelog:_
 - **2026-03-14 (Evening)**: Added dynamic wait time calculation
   - `GNS3StartNodeTool` now calculates optimal wait times based on device types
-  - Fast devices (VPCS: 10s, IOU: 20s) start much faster than before
+  - Fast devices (VPCS: 15s, IOU: 25s) start much faster than before
+  - Conservative timing accounts for slower hardware environments
   - Slow devices (QEMU, Dynamips, etc.) use conservative 120s base time
-  - Performance improvements: 82-93% faster for VPCS/IOU labs
+  - Performance improvements: 79-89% faster for VPCS/IOU labs
   - Automatic device type detection via `node.node_type`
   - Logs selected strategy and detected device types
 

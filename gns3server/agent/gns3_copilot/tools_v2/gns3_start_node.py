@@ -47,9 +47,10 @@ logger = logging.getLogger(__name__)
 
 # Node startup time configuration by device type
 # Based on typical boot times for different emulators
+# Conservative timing to account for slower hardware environments
 NODE_STARTUP_TIME = {
-    "vpcs": {"base": 10, "extra_per_node": 2},   # VPCS: Very fast startup
-    "iou": {"base": 20, "extra_per_node": 3},    # IOU: Fast startup
+    "vpcs": {"base": 15, "extra_per_node": 2},   # VPCS: Very fast startup
+    "iou": {"base": 25, "extra_per_node": 3},    # IOU: Fast startup
     "default": {"base": 120, "extra_per_node": 10},  # Other devices: Conservative time
 }
 
