@@ -192,7 +192,6 @@ async def stop_iou_node(node: IOUVM = Depends(dep_node)) -> None:
 def suspend_iou_node(node: IOUVM = Depends(dep_node)) -> None:
     """
     Suspend an IOU node.
-    Does nothing since IOU doesn't support being suspended.
     """
 
     raise HTTPException(
