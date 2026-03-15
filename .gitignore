@@ -72,3 +72,6 @@ venv
 .claude/
 !.claude/development.md  # Exception: allow development docs
 # PROJECT_CONTEXT.md  # Commented out: allow tracking project context
+
+# Tiktoken cache files
+gns3server/agent/gns3_copilot/cache/tiktoken/

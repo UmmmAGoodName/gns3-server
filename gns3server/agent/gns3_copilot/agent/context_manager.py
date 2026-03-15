@@ -43,9 +43,16 @@ Requirements:
 
 import json
 import logging
+import os
 import warnings
+from pathlib import Path
 from typing import Any
 from typing import Callable
+
+# Configure tiktoken cache directory (must be set before importing tiktoken)
+_cache_dir = Path(__file__).parent.parent / "cache" / "tiktoken"
+_cache_dir.mkdir(parents=True, exist_ok=True)
+os.environ["TIKTOKEN_CACHE_DIR"] = str(_cache_dir)
 
 import tiktoken
 from langchain_core.messages import BaseMessage
@@ -59,8 +66,14 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 # Initialize tiktoken encoding (required dependency)
+import time
+logger.info("Initializing tiktoken encoding (cl100k_base)...")
+logger.info(f"Cache directory: {_cache_dir}")
+logger.info("This may take a moment on first run (downloading ~1.6MB encoding file from openaipublic.blob.core.windows.net)")
+start_time = time.time()
 _tiktoken_encoding = tiktoken.get_encoding("cl100k_base")
-logger.info("Using tiktoken (cl100k_base) for accurate token counting")
+elapsed = time.time() - start_time
+logger.info(f"✓ tiktoken encoding loaded successfully (took {elapsed:.2f}s)")
 
 # ============================================================================
 # Constants

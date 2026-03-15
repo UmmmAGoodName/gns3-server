@@ -368,6 +368,8 @@ class VPCSTelnet(BaseConnection):
 
 
 # Register the custom device type with Netmiko
+_registered = False  # Flag to prevent duplicate registration
+
 def register_custom_device_type() -> None:
     """
     Register the custom VPCS Telnet device type with Netmiko.
@@ -377,7 +379,16 @@ def register_custom_device_type() -> None:
 
     IMPORTANT: This function should be called BEFORE using the VPCS device
     type with Netmiko.
+
+    Note: This function is idempotent - multiple calls will only register once.
     """
+    global _registered
+
+    # Prevent duplicate registration
+    if _registered:
+        logger.debug("VPCS Telnet device type already registered, skipping")
+        return
+
     # Use importlib to avoid namespace conflicts
     sd = importlib.import_module("netmiko.ssh_dispatcher")
 
@@ -407,6 +418,9 @@ def register_custom_device_type() -> None:
     # Rebuild the platform strings used in error messages
     sd.platforms_str = "\n" + "\n".join(sd.platforms_base)
     sd.telnet_platforms_str = "\n" + "\n".join(sd.telnet_platforms)
+
+    # Mark as registered
+    _registered = True
 
     logger.info("Successfully registered VPCS Telnet device type with Netmiko")
 

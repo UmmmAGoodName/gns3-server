@@ -46,6 +46,8 @@ import time
 
 from netmiko.ruijie.ruijie_os import RuijieOSBase
 
+logger = logging.getLogger(__name__)
+
 
 class RuijieTelnetEnhanced(RuijieOSBase):
     """
@@ -249,13 +251,24 @@ class RuijieTelnetEnhanced(RuijieOSBase):
 
 
 # Register the custom device type with Netmiko
+_registered = False  # Flag to prevent duplicate registration
+
 def register_custom_device_type() -> None:
     """
     Register the custom RuijieTelnetEnhanced device type with Netmiko.
 
     This function adds 'gns3_ruijie_telnet' to Netmiko's CLASS_MAPPER
     and updates the platforms lists.
+
+    Note: This function is idempotent - multiple calls will only register once.
     """
+    global _registered
+
+    # Prevent duplicate registration
+    if _registered:
+        logger.debug("Ruijie Telnet device type already registered, skipping")
+        return
+
     sd = importlib.import_module("netmiko.ssh_dispatcher")
 
     # Register in both mappers
@@ -270,6 +283,11 @@ def register_custom_device_type() -> None:
     sd.telnet_platforms = [x for x in sd.platforms if "telnet" in x]
     sd.platforms_str = "\n" + "\n".join(sd.platforms_base)
     sd.telnet_platforms_str = "\n" + "\n".join(sd.telnet_platforms)
+
+    # Mark as registered
+    _registered = True
+
+    logger.info("Successfully registered Ruijie Telnet device type with Netmiko")
 
 
 # Auto-register on import

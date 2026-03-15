@@ -79,6 +79,8 @@ import time
 
 from netmiko.huawei.huawei import HuaweiBase
 
+logger = logging.getLogger(__name__)
+
 
 class GNS3HuaweiTelnetCE(HuaweiBase):
     """
@@ -373,6 +375,8 @@ class GNS3HuaweiTelnetCE(HuaweiBase):
 
 
 # Register the custom device type with Netmiko
+_registered = False  # Flag to prevent duplicate registration
+
 def register_custom_device_type() -> None:
     """
     Register the custom GNS3HuaweiTelnetCE device type with Netmiko.
@@ -388,9 +392,18 @@ def register_custom_device_type() -> None:
     or running any Netmiko tasks. Call it explicitly at the appropriate
     time.
 
+    Note: This function is idempotent - multiple calls will only register once.
+
     Returns:
         None
     """
+    global _registered
+
+    # Prevent duplicate registration
+    if _registered:
+        logger.debug("Huawei CE device type already registered, skipping")
+        return
+
     # Use importlib to avoid namespace conflicts
     # Import the module using importlib to ensure we get the module,
     # not a function
@@ -422,6 +435,11 @@ def register_custom_device_type() -> None:
     # Rebuild the platform strings used in error messages
     sd.platforms_str = "\n" + "\n".join(sd.platforms_base)
     sd.telnet_platforms_str = "\n" + "\n".join(sd.telnet_platforms)
+
+    # Mark as registered
+    _registered = True
+
+    logger.info("Successfully registered Huawei CE device type with Netmiko")
 
 
 # Auto-register on import
