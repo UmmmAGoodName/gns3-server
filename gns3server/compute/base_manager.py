@@ -221,6 +221,9 @@ class BaseManager:
         if not hasattr(destination_node, "working_dir"):
             return destination_node
 
+        if hasattr(source_node, "status") and source_node.status != "stopped":
+            raise ComputeError("Cannot duplicate node data while the node is running")
+ 
         destination_dir = destination_node.working_dir
         try:
             shutil.rmtree(destination_dir)
