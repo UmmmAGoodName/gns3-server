@@ -645,7 +645,7 @@ class Dynamips(BaseManager):
             return await super().duplicate_node(source_node_id, destination_node_id)
 
         if hasattr(source_node, "status") and source_node.status != "stopped":
-            raise DynamipsError("Cannot duplicate router data while the route is running")
+            raise DynamipsError("Cannot duplicate router data while the router is running")
 
         try:
             with open(source_node.startup_config_path) as f:
