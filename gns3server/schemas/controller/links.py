@@ -47,6 +47,9 @@ class LinkStyle(BaseModel):
     color: Optional[str] = None
     width: Optional[int] = None
     type: Optional[int] = None
+    link_type: Optional[str] = None
+    bezier_curviness: Optional[int] = None
+    flowchart_roundness: Optional[int] = None
 
 
 class LinkBase(BaseModel):
