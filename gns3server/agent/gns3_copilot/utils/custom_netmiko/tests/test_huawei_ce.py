@@ -51,16 +51,19 @@ class TestHuaweiTelnetCEDriver(unittest.TestCase):
 
         # Check CLASS_MAPPER
         self.assertIn("gns3_huawei_telnet_ce", CLASS_MAPPER)
+        registered_class = CLASS_MAPPER["gns3_huawei_telnet_ce"]
+        # Compare by module+name since class may be imported via different paths
         self.assertEqual(
-            CLASS_MAPPER["gns3_huawei_telnet_ce"],
-            self.HuaweiTelnetCE
+            (registered_class.__module__, registered_class.__name__),
+            (self.HuaweiTelnetCE.__module__, self.HuaweiTelnetCE.__name__)
         )
 
         # Check CLASS_MAPPER_BASE
         self.assertIn("gns3_huawei_telnet_ce", CLASS_MAPPER_BASE)
+        registered_class_base = CLASS_MAPPER_BASE["gns3_huawei_telnet_ce"]
         self.assertEqual(
-            CLASS_MAPPER_BASE["gns3_huawei_telnet_ce"],
-            self.HuaweiTelnetCE
+            (registered_class_base.__module__, registered_class_base.__name__),
+            (self.HuaweiTelnetCE.__module__, self.HuaweiTelnetCE.__name__)
         )
 
     def test_inheritance_from_huawei_base(self):
