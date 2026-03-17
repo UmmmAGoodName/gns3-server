@@ -51,14 +51,14 @@ class TestRuijieTelnetEnhancedDriver(unittest.TestCase):
 
         # Check CLASS_MAPPER
         self.assertIn("gns3_ruijie_telnet", CLASS_MAPPER)
-        self.assertEqual(
+        self.assertIs(
             CLASS_MAPPER["gns3_ruijie_telnet"],
             self.RuijieTelnetEnhanced
         )
 
         # Check CLASS_MAPPER_BASE
         self.assertIn("gns3_ruijie_telnet", CLASS_MAPPER_BASE)
-        self.assertEqual(
+        self.assertIs(
             CLASS_MAPPER_BASE["gns3_ruijie_telnet"],
             self.RuijieTelnetEnhanced
         )
