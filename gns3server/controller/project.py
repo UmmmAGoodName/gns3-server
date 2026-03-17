@@ -29,6 +29,7 @@ import zipfile
 import pathlib
 
 from uuid import UUID, uuid4
+from fastapi import HTTPException, status
 
 from .node import Node
 from .compute import ComputeError
@@ -836,7 +837,11 @@ class Project:
             log.warning(f"Closing project '{self.name}' ignored because it is being loaded")
             return
         self._closing = True
-        await self.stop_all()
+        try:
+            await self.stop_all()
+        except HTTPException as e:
+            if not e.status_code == status.HTTP_405_METHOD_NOT_ALLOWED:
+                raise
         for compute in list(self._project_created_on_compute):
             try:
                 await compute.post(f"/projects/{self._id}/close", dont_connect=True)
@@ -1298,9 +1303,6 @@ class Project:
         :param z: Z position
         :returns: New node
         """
-
-        if node.status != "stopped" and not node.is_always_running():
-            raise ControllerError("Cannot duplicate node data while the node is running")
 
         data = copy.deepcopy(node.asdict(topology_dump=True))
         # Some properties like internal ID should not be duplicated
