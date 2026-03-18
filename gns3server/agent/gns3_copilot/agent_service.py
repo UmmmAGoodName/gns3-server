@@ -57,6 +57,7 @@ from gns3server.agent.gns3_copilot.gns3_client.context_helpers import (
 from gns3server.agent.gns3_copilot.gns3_client.context_helpers import (
     set_current_llm_config,
 )
+from gns3server.agent.gns3_copilot.utils.error_handler import format_error_message
 from gns3server.agent.gns3_copilot.utils.message_converters import (
     convert_langchain_to_openai,
 )
@@ -499,7 +500,11 @@ class AgentService:
 
         except Exception as e:
             log.error("Error in stream_chat: %s", e, exc_info=True)
-            yield {"type": "error", "error": str(e), "session_id": session_id}
+            yield {
+                "type": "error",
+                "error": format_error_message(e),
+                "session_id": session_id,
+            }
 
     def _convert_event_to_chunk(
         self, event: Dict[str, Any], session_id: str

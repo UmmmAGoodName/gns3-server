@@ -37,6 +37,7 @@ Author: Yue Guobin (岳国宾)
 """
 
 # Import main utility functions
+from .error_handler import format_error_message
 from .get_gns3_device_port import get_device_ports_from_topology
 from .parse_tool_content import format_tool_response
 from .parse_tool_content import normalize_tool_response
@@ -56,6 +57,7 @@ __url__ = "https://github.com/yueguobin/gns3-copilot"
 
 # Export main utility functions
 __all__ = [
+    "format_error_message",
     "get_device_ports_from_topology",
     "parse_tool_content",
     "format_tool_response",
