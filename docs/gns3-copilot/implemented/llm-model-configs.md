@@ -69,6 +69,99 @@ The `model_type` field accepts the following values:
 
 ---
 
+## Supported Providers
+
+GNS3-Copilot uses LangChain's `init_chat_model` function, which supports the following LLM providers:
+
+### Provider List
+
+| Provider | Provider Value | Default base_url | base_url Required? | Notes |
+|----------|---------------|------------------|-------------------|-------|
+| OpenAI | `openai` | `https://api.openai.com/v1` | ❌ No | Most popular, supports GPT-4, GPT-3.5 |
+| Anthropic | `anthropic` | `https://api.anthropic.com` | ❌ No | Claude 3.5 Sonnet, Claude 3 Opus |
+| Google | `google` | `https://generativelanguage.googleapis.com` | ❌ No | Gemini Pro, Gemini Flash |
+| AWS Bedrock | `aws` | Varies by region | ✅ Yes | Requires AWS configuration |
+| Ollama | `ollama` | `http://localhost:11434` | ✅ Yes | Local models, typically running on localhost |
+| DeepSeek | `deepseek` | `https://api.deepseek.com` | ❌ No | DeepSeek Chat, DeepSeek Coder |
+| xAI | `xai` | `https://api.x.ai` | ❌ No | Grok models |
+
+### When to Specify `base_url`
+
+You only need to specify the `base_url` parameter in these scenarios:
+
+1. **Using Ollama**: Always required (e.g., `http://localhost:11434`)
+2. **Using AWS Bedrock**: Required, depends on your AWS region configuration
+3. **Using a proxy or custom endpoint**: If you're accessing the provider through a proxy
+4. **Using OpenAI-compatible services**: Such as Azure OpenAI, local deployments, or third-party APIs
+5. **Self-hosted or custom deployments**: When running your own model server
+
+### Example Configurations by Provider
+
+#### OpenAI (No base_url needed)
+```json
+{
+  "name": "GPT-4o",
+  "model_type": "text",
+  "provider": "openai",
+  "model": "gpt-4o",
+  "temperature": 0.7,
+  "context_limit": 128,
+  "api_key": "sk-..."
+}
+```
+
+#### Anthropic (No base_url needed)
+```json
+{
+  "name": "Claude-3.5 Sonnet",
+  "model_type": "text",
+  "provider": "anthropic",
+  "model": "claude-3-5-sonnet-20241022",
+  "temperature": 0.7,
+  "context_limit": 200,
+  "api_key": "sk-ant-..."
+}
+```
+
+#### Ollama (base_url required)
+```json
+{
+  "name": "Llama-3-Local",
+  "model_type": "text",
+  "provider": "ollama",
+  "base_url": "http://localhost:11434",
+  "model": "llama3",
+  "temperature": 0.7,
+  "context_limit": 8
+}
+```
+
+#### Azure OpenAI (custom base_url)
+```json
+{
+  "name": "Azure-GPT-4",
+  "model_type": "text",
+  "provider": "openai",
+  "base_url": "https://your-resource.openai.azure.com/openai/deployments/your-deployment",
+  "model": "gpt-4",
+  "temperature": 0.7,
+  "context_limit": 128,
+  "api_key": "..."
+}
+```
+
+### Adding New Providers
+
+To add support for additional LangChain providers:
+
+1. Install the corresponding LangChain provider package (e.g., `langchain-<provider>`)
+2. Add the package to `ai-requirements.txt`
+3. Use the provider's identifier value in the `provider` field
+
+For a complete list of LangChain-supported providers, see: https://python.langchain.com/docs/integrations/providers/
+
+---
+
 ## API Endpoints
 
 ### User Configuration Endpoints
@@ -108,8 +201,8 @@ The `model_type` field accepts the following values:
 |-------|------|-------------|
 | `name` | string | Configuration name (1-100 chars) |
 | `model_type` | string | Model type (text, vision, stt, tts, multimodal, embedding, reranking, other) |
-| `provider` | string | LLM provider (e.g., "openai", "anthropic", "ollama") |
-| `base_url` | string | API base URL |
+| `provider` | string | LLM provider (e.g., "openai", "anthropic", "ollama"). See [Supported Providers](#supported-providers) below |
+| `base_url` | string | API base URL (required). For mainstream providers, use their official endpoint. See [Supported Providers](#supported-providers) for default URLs |
 | `model` | string | Model name |
 | `temperature` | float | Temperature (0.0-2.0, default: 0.7) |
 | `context_limit` | integer | **Model context window limit in K tokens** (e.g., 128 = 128K = 128,000 tokens) |
@@ -243,6 +336,7 @@ curl -X POST http://localhost:3080/v3/access/users/{user_id}/llm-model-configs \
 **Important:**
 - `context_limit` is **required** and specified in K tokens (e.g., 128 = 128K = 128,000 tokens)
 - Refer to the model provider's official documentation for the current context window size
+- **`base_url` is required** - you must provide a value. For mainstream providers (OpenAI, Anthropic, Google, DeepSeek, xAI), use their official endpoints listed in [Supported Providers](#supported-providers)
 
 **Response:**
 ```json
@@ -876,3 +970,71 @@ HTTP 400 Bad Request
   "detail": "context_limit is required (unit: K tokens, e.g., 128 = 128K = 128,000 tokens). Please check your model provider's documentation for the current context window size and specify it in the configuration."
 }
 ```
+
+---
+
+## Future Enhancements
+
+### Optional `base_url` Field
+
+**Current Behavior:**
+The `base_url` field is currently required for all configurations, even for mainstream providers (OpenAI, Anthropic, Google, DeepSeek, xAI) that have well-known, stable endpoints.
+
+**Proposed Enhancement:**
+Make `base_url` an optional field that automatically uses provider defaults when not specified.
+
+**Benefits:**
+- Simplified configuration for common use cases
+- Reduced user error (typos in URLs)
+- Better user experience for mainstream providers
+
+**Proposed Implementation:**
+
+1. **Schema Changes** (`gns3server/schemas/controller/llm_model_configs.py`):
+   ```python
+   # Current
+   base_url: str = Field(..., description="API base URL")
+
+   # Proposed
+   base_url: Optional[str] = Field(None, description="API base URL (optional, uses provider default if not specified)")
+   ```
+
+2. **Model Factory Changes** (`gns3server/agent/gns3_copilot/agent/model_factory.py`):
+   - Handle `None` or empty `base_url` by passing it to LangChain's `init_chat_model`
+   - LangChain will automatically use the provider's default endpoint
+
+3. **Backward Compatibility:**
+   - Existing configurations with explicit `base_url` continue to work
+   - No migration required
+
+**Example After Enhancement:**
+
+```json
+// Mainstream provider - no base_url needed
+{
+  "name": "GPT-4o",
+  "provider": "openai",
+  "model": "gpt-4o",
+  "context_limit": 128
+}
+
+// Ollama - base_url still required
+{
+  "name": "Llama-3-Local",
+  "provider": "ollama",
+  "base_url": "http://localhost:11434",
+  "model": "llama3",
+  "context_limit": 8
+}
+
+// Custom endpoint - base_url specified
+{
+  "name": "Azure-GPT-4",
+  "provider": "openai",
+  "base_url": "https://your-resource.openai.azure.com/...",
+  "model": "gpt-4",
+  "context_limit": 128
+}
+```
+
+**Implementation Status:** Not yet implemented. Documented for future reference.
