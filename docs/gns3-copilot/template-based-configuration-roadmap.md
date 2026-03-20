@@ -8,6 +8,48 @@
 
 This document outlines the plan for implementing **template-based systems with Human-in-the-Loop (HITL) confirmations** for both **device configuration** and **node creation** in GNS3 AI Copilot.
 
+### Scope & Positioning
+
+**This system focuses on baseline configuration and topology provisioning** - getting from zero to a manageable state. Once devices are connected and have basic IP/routing configuration, modern network management tools can take over for production-grade configuration management.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Phase 1: Environment Preparation (This System)              │
+│ ─────────────────────────────────────────────────────────── │
+│ • Create topology (nodes + links)                           │
+│ • Baseline IP configuration                                 │
+│ • Enable routing protocols (OSPF/BGP)                       │
+│ • Management access (SSH/HTTPS/NETCONF)                     │
+│ • Basic security (ACLs, passwords)                          │
+│ ─────────────────────────────────────────────────────────── │
+│ Result: Manageable network ready for production tools       │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ Phase 2: Production Configuration (External Tools)          │
+│ ─────────────────────────────────────────────────────────── │
+│ • Terraform (Infrastructure as Code)                        │
+│ • REST API (Modern device management)                       │
+│ • NETCONF/YANG (Standardized configuration)                 │
+│ • Network Controllers (SDN, APIC, etc.)                     │
+│ • Monitoring & Observability                                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Use Cases for This System:**
+- Rapid lab provisioning (training, testing, CI/CD)
+- Network simulation and research
+- Proof-of-concept deployments
+- Disaster recovery drills
+- Initial topology setup before handoff to automation tools
+
+**Not In Scope (handled by other tools):**
+- Fine-grained configuration management
+- Compliance and policy enforcement
+- Continuous configuration drift management
+- Production-grade change management
+- Advanced telemetry and monitoring
+
 ### Motivation
 
 #### Current Configuration Challenges
@@ -2119,6 +2161,7 @@ langgraph>=0.0.20
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-20 | 0.6 | Clarified system scope and positioning - focuses on baseline configuration (0→1), with handoff to production tools (Terraform/REST API/NETCONF) for advanced configuration (1→N) |
 | 2026-03-20 | 0.5 | **Major documentation refactor** - Reduced code content by ~60%, added comprehensive diagrams: System architecture, HITL state transitions, API design, data flow, error handling, template lifecycle; Enhanced section on testing strategy; Improved visual documentation |
 | 2026-03-20 | 0.4 | Added link creation templates section with topology patterns (Spine-Leaf, Ring, Mesh, Star), intelligent port allocation, performance benchmarks for large-scale connectivity |
 | 2026-03-20 | 0.3 | Added node creation templates section with batch topology provisioning, auto-linking, automatic positioning; Combined node creation + configuration workflows for rapid 1000+ node data center deployment |
