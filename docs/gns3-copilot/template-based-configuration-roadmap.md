@@ -151,325 +151,212 @@ User Request: "Configure OSPF on all routers"
 
 ## Core Components
 
-### 1. New LangChain Tools
+### System Architecture Overview
 
-#### Tool 1: `GenerateConfigTemplate`
-
-```python
-class GenerateConfigTemplate(BaseTool):
-    """
-    Generates Jinja2 configuration templates for human review.
-
-    This tool ONLY generates templates. No configuration is executed.
-
-    Input:
-    {
-        "project_id": "project-uuid",
-        "device_type": "cisco_ios | huawei_vrp | ...",
-        "requirement": "user requirement description"
-    }
-
-    Output:
-    {
-        "template_content": "jinja2 template string",
-        "template_description": "human-readable description",
-        "params_schema": {
-            "param_name": "type - description"
-        },
-        "rendered_example": "example output with sample data"
-    }
-    """
-
-    name = "generate_config_template"
-    description = "Generate Jinja2 templates for network device configuration"
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         GNS3 Web UI / CLI                          │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ HTTP/WebSocket
+                               ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│                       GNS3 Server (FastAPI)                         │
+│                                                                      │
+│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │
+│  │ Chat API    │  │ Template API │  │  SSE Progress Stream      │  │
+│  │ (existing)  │  │ (new)        │  │  (new)                    │  │
+│  └──────┬──────┘  └──────┬───────┘  └──────────┬───────────────┘  │
+│         │                │                     │                   │
+│         └────────────────┴─────────────────────┘                   │
+│                               │                                     │
+└───────────────────────────────┼─────────────────────────────────────┘
+                                │
+                                ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│                   AI Copilot Agent (LangGraph)                      │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │              HITL Workflow Orchestrator                       │  │
+│  │  ┌──────────┐    ┌──────────┐    ┌──────────┐               │  │
+│  │  │ Generate │ →  │ Generate │ →  │ Execute  │               │  │
+│  │  │ Template │    │ Params   │    │ Config   │               │  │
+│  │  └────┬─────┘    └────┬─────┘    └────┬─────┘               │  │
+│  │       │               │               │                      │  │
+│  │  🔵 HITL Checkpoints (LangGraph Interrupts)                 │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │                    Core Modules                               │  │
+│  │  ┌──────────────┐  ┌─────────────┐  ┌──────────────────┐    │  │
+│  │  │   Template   │  │   Session   │  │   Rule Engine    │    │  │
+│  │  │   Renderer   │  │   Manager   │  │  (Direct Mode)   │    │  │
+│  │  └──────────────┘  └─────────────┘  └──────────────────┘    │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                                │
+                                ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│                      GNS3 Controller & Compute                      │
+│  ┌────────────┐  ┌────────────┐  ┌──────────────────────────┐     │
+│  │   Node     │  │   Link     │  │    Nornir + Netmiko      │     │
+│  │ Management │  │ Management │  │    (Config Execution)    │     │
+│  └────────────┘  └────────────┘  └──────────────────────────┘     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Tool 2: `GenerateTemplateParams`
+### HITL State Transition Diagram
 
-```python
-class GenerateTemplateParams(BaseTool):
-    """
-    Generates parameter data for confirmed templates.
-
-    Uses the template that was confirmed in the previous step.
-
-    Input:
-    {
-        "project_id": "project-uuid",
-        "confirmed_template": { ... },  # From previous step
-        "topology_context": { ... }
-    }
-
-    Output:
-    {
-        "project_id": "project-uuid",
-        "device_params": [
-            {
-                "device_name": "R1",
-                "param1": "value1",
-                "param2": "value2"
-            }
-        ],
-        "preview": {
-            "R1": ["config", "commands"],
-            "R2": ["config", "commands"]
-        }
-    }
-    """
-
-    name = "generate_template_params"
-    description = "Generate parameters for confirmed configuration templates"
+```
+                    ┌─────────────┐
+                    │    IDLE     │
+                    └──────┬──────┘
+                           │ User Request
+                           ↓
+                    ┌─────────────┐
+                    │  GENERATING │
+                    │  TEMPLATE   │
+                    └──────┬──────┘
+                           │ AI Complete
+                           ↓
+                    ┌─────────────────────────────────┐
+                    │      🔵 TEMPLATE_REVIEW        │
+                    │      (LangGraph Interrupt)      │
+                    │                                 │
+                    │  User sees:                     │
+                    │  - Template content             │
+                    │  - Parameter schema             │
+                    │  - Example output               │
+                    │                                 │
+                    │  Actions:                       │
+                    │  [Confirm] [Modify] [Cancel]    │
+                    └─────┬───────────────┬───────────┘
+                          │               │
+                Confirm   │               │ Cancel
+                          │               ↓
+                    ┌──────┴──────┐   ┌────────┐
+                    │ GENERATING  │   │  END   │
+                    │  PARAMS     │   └────────┘
+                    └──────┬──────┘
+                           │ AI Complete OR
+                           │ Rule Engine
+                           ↓
+                    ┌─────────────────────────────────┐
+                    │      🔵 PARAMS_REVIEW          │
+                    │      (LangGraph Interrupt)      │
+                    │                                 │
+                    │  User sees:                     │
+                    │  - Device list                  │
+                    │  - Parameters per device        │
+                    │  - Rendered configs             │
+                    │                                 │
+                    │  Actions:                       │
+                    │  [Execute] [Modify] [Cancel]    │
+                    └─────┬───────────────┬───────────┘
+                          │               │
+                Execute   │               │ Cancel
+                          │               ↓
+                    ┌──────┴──────┐   ┌────────┐
+                    │  EXECUTING  │   │  END   │
+                    │  (0 tokens) │   └────────┘
+                    └──────┬──────┘
+                           │ Complete
+                           ↓
+                    ┌─────────────┐
+                    │  COMPLETED  │
+                    └─────────────┘
 ```
 
-#### Tool 3: `ExecuteTemplateBasedConfig`
+### Component Overview
 
-```python
-class ExecuteTemplateBasedConfig(BaseTool):
-    """
-    Executes configuration using confirmed template and parameters.
+#### 1. LangChain Tools (3 new tools)
 
-    This tool ONLY executes. No generation happens here.
+**`GenerateConfigTemplate`**
+- Purpose: Generate Jinja2 templates for human review
+- Input: project_id, device_type, requirement
+- Output: template_content, description, params_schema, rendered_example
+- Token Cost: ~150-200 tokens
 
-    Input:
-    {
-        "project_id": "project-uuid",
-        "confirmed_template": "jinja2 template",
-        "confirmed_params": [ ... ]
-    }
+**`GenerateTemplateParams`**
+- Purpose: Generate parameters for confirmed templates
+- Input: project_id, confirmed_template, topology_context
+- Output: device_params array with rendered previews
+- Token Cost: ~50-100 tokens/device (or 0 with rule engine)
 
-    Output:
-    {
-        "results": [
-            {
-                "device_name": "R1",
-                "status": "success",
-                "config_commands": ["command1", "command2"],
-                "output": "execution output"
-            }
-        ]
-    }
-    """
+**`ExecuteTemplateBasedConfig`**
+- Purpose: Execute configuration from templates (local rendering)
+- Input: project_id, confirmed_template, confirmed_params
+- Output: execution results per device
+- Token Cost: **0 tokens** (pure local execution)
 
-    name = "execute_template_based_config"
-    description = "Execute configuration from templates (0 token cost)"
-```
+#### 2. Template Renderer Module
 
-### 2. Template Renderer Module
+**Key Features:**
+- Jinja2-based configuration rendering
+- Preserves network config indentation
+- Supports conditionals, loops, filters
+- Zero token consumption (local execution)
 
-```python
-# gns3server/agent/gns3_copilot/config_templates/template_renderer.py
-
-from jinja2 import Environment, BaseLoader
-
-class ConfigTemplateRenderer:
-    """
-    Renders Jinja2 templates for network device configuration.
-
-    Key features:
-    - Preserves configuration indentation
-    - Supports conditionals and loops
-    - No token consumption (local execution)
-    """
-
-    def __init__(self):
-        self.env = Environment(
-            loader=BaseLoader(),
-            trim_l_blocks=True,      # Remove left whitespace
-            trim_r_blocks=True,      # Remove right whitespace
-            lstrip_blocks=True,      # Strip leading whitespace
-            keep_trailing_newline=False,
-            autoescape=False         # Don't escape config commands
-        )
-
-    def render(self, template: str, params: dict) -> list[str]:
-        """
-        Render template and return configuration commands.
-
-        Args:
-            template: Jinja2 template string
-            params: Template parameters
-
-        Returns:
-            List of configuration commands (one per line)
-        """
-        tmpl = self.env.from_string(template)
-        rendered = tmpl.render(**params)
-
-        # Split into commands and filter empty lines
-        commands = [
-            line.strip()
-            for line in rendered.split('\n')
-            if line.strip()
-        ]
-
-        return commands
-```
-
-### 3. Session State Management
-
-```python
-# gns3server/agent/gns3_copilot/template_session_manager.py
-
-class TemplateSessionManager:
-    """
-    Manages template state across HITL workflow.
-
-    Stores:
-    - Confirmed templates (awaiting parameter generation)
-    - Template metadata (description, schema)
-    - Session history
-    """
-
-    def __init__(self):
-        self.sessions = {}  # project_id -> session_data
-
-    def save_template(self, project_id: str, template_data: dict):
-        """Save user-confirmed template to session."""
-        if project_id not in self.sessions:
-            self.sessions[project_id] = {}
-
-        self.sessions[project_id]['confirmed_template'] = template_data
-        self.sessions[project_id]['updated_at'] = datetime.now()
-
-    def get_template(self, project_id: str) -> dict | None:
-        """Retrieve confirmed template for session."""
-        return self.sessions.get(project_id, {}).get('confirmed_template')
-
-    def clear_session(self, project_id: str):
-        """Clear session data after execution or cancellation."""
-        if project_id in self.sessions:
-            del self.sessions[project_id]
-```
-
-### 4. Updated System Prompt
-
-```python
-# gns3server/agent/gns3_copilot/prompts/template_workflow_prompt.py
-
-TEMPLATE_WORKFLOW_GUIDE = """
-# Configuration Generation with HITL Workflow
-
-When users request device configuration, follow this THREE-STEP process:
-
-## Step 1: Generate Configuration Template
-
-Use `generate_config_template` to create a Jinja2 template.
-
-**IMPORTANT:** Wait for user confirmation before proceeding.
-
-### Template Format Example
-
+**Supported Template Features:**
 ```jinja2
-router ospf {{ process_id }}
-{% for network in networks %}
- network {{ network.ip }} {{ network.mask }} area {{ area }}
+# Variables
+hostname {{ hostname }}
+
+# Loops
+{% for interface in interfaces %}
+interface {{ interface.name }}
+ ip address {{ interface.ip }} {{ interface.mask }}
 {% endfor %}
+
+# Conditionals
+{% if ospf_enabled %}
+router ospf {{ process_id }}
+ network {{ networks }} area {{ area }}
+{% endif %}
+
+# Filters
+{{ ip | ip_network }}  # Custom filter for IP operations
 ```
 
-### Parameter Schema Example
+#### 3. Session State Management
 
-```json
-{
-  "process_id": "int - OSPF process ID",
-  "networks": "List[Dict] - Each dict has 'ip' and 'mask' keys",
-  "area": "str - OSPF area ID"
-}
-```
+**Stores:**
+- Confirmed templates (awaiting params)
+- Template metadata (schema, description)
+- Session history (for audit trail)
+- User modification tracking
 
-## Step 2: Generate Parameters
+**Lifecycle:**
+1. Created when template generated
+2. Updated when user confirms/modifies
+3. Cleared after execution or cancellation
+4. TTL: 24 hours (auto-cleanup)
 
-After user confirms the template, use `generate_template_params` to generate device-specific parameters.
+#### 4. LangGraph Workflow Integration
 
-**IMPORTANT:** Wait for user confirmation before executing.
-
-## Step 3: Execute Configuration
-
-After user confirms parameters, use `execute_template_based_config` to execute.
-
-## Critical Rules
-
-- ⚠️ MUST wait for confirmation after each step
-- ⚠️ DO NOT skip confirmation steps
-- ✅ Proceed to next step only after user confirmation
-- ❌ Stop if user cancels at any point
-
-## Benefits
-
-- **70-80% token savings** for multi-device configurations
-- **Human review** at every critical step
-- **Template reusability** across similar configurations
-- **Preview capabilities** before execution
-"""
-```
-
-### 5. LangGraph State Machine
-
+**Interrupt Mechanism:**
 ```python
-# gns3server/agent/gns3_copilot/workflows/template_config_graph.py
-
-from langgraph.graph import StateGraph, END
-from typing import TypedDict, Literal
-
-class TemplateConfigState(TypedDict):
-    """State for template-based configuration workflow."""
-    messages: list[BaseMessage]
-    current_step: Literal[
-        "idle",
-        "generating_template",
-        "template_review",
-        "generating_params",
-        "params_review",
-        "executing",
-        "completed",
-        "cancelled"
-    ]
-    project_id: str
-    confirmed_template: dict | None
-    confirmed_params: dict | None
-    user_confirmation: str | None
-    execution_results: dict | None
-
-def should_generate_params(state: TemplateConfigState) -> str:
-    """Check if template was confirmed."""
-    if state.get("user_confirmation") == "template_confirmed":
-        return "generate_params"
-    return "end"
-
-def should_execute(state: TemplateConfigState) -> str:
-    """Check if params were confirmed."""
-    if state.get("user_confirmation") == "params_confirmed":
-        return "execute"
-    return "end"
-
-# Build workflow graph
-workflow = StateGraph(TemplateConfigState)
-
-# Add nodes
-workflow.add_node("generate_template", generate_template_node)
-workflow.add_node("generate_params", generate_params_node)
-workflow.add_node("execute", execute_config_node)
-
-# Add conditional edges
-workflow.add_conditional_edges(
-    "generate_template",
-    should_generate_params,
-    {
-        "generate_params": "generate_params",
-        "end": END
+# LangGraph interrupt points for HITL
+@interrupt
+def template_review_checkpoint(state):
+    """Pause and wait for user confirmation."""
+    return {
+        "type": "template_review",
+        "data": state["generated_template"]
     }
-)
 
-workflow.add_conditional_edges(
-    "generate_params",
-    should_execute,
-    {
-        "execute": "execute",
-        "end": END
+@interrupt
+def params_review_checkpoint(state):
+    """Pause and wait for user confirmation."""
+    return {
+        "type": "params_review",
+        "data": state["generated_params"]
     }
-)
-
-workflow.add_edge("execute", END)
 ```
+
+**State Management:**
+- State persisted across interrupts
+- User can modify state before resuming
+- Full audit trail of all transitions
 
 ---
 
@@ -544,6 +431,194 @@ workflow.add_edge("execute", END)
 │ [✓ Execute Configuration]  [✏️ Modify Parameters]               │
 │ [👁️ Preview All]  [❌ Cancel]                                  │
 └────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## API Design & Data Flow
+
+### REST API Endpoints
+
+```
+POST /api/v3/projects/{project_id}/templates/config
+  ├─ Request: { "device_type": "cisco_ios", "requirement": "Configure OSPF" }
+  └─ Response: { "template_id": "uuid", "template_content": "...", "params_schema": {...} }
+
+PUT /api/v3/projects/{project_id}/templates/{template_id}/confirm
+  ├─ Request: { "action": "confirm" | "modify", "modifications": {...} }
+  └─ Response: { "status": "confirmed", "next_step": "generate_params" }
+
+POST /api/v3/projects/{project_id}/templates/{template_id}/params
+  ├─ Request: { "mode": "ai" | "direct" }
+  └─ Response: { "device_params": [...], "preview": {...} }
+
+POST /api/v3/projects/{project_id}/templates/{template_id}/execute
+  ├─ Request: { "confirmed_params": [...] }
+  └─ Response: { "execution_id": "uuid", "status": "executing" }
+
+GET /api/v3/projects/{project_id}/templates/{template_id}/status
+  └─ Response: { "status": "completed", "progress": 100, "results": [...] }
+
+DELETE /api/v3/projects/{project_id}/templates/{template_id}
+  └─ Response: { "status": "cancelled" }
+```
+
+### SSE Progress Stream
+
+```typescript
+// Server-Sent Events for real-time progress
+// Endpoint: GET /api/v3/projects/{project_id}/templates/{template_id}/stream
+
+// Event Types:
+event: template_generated
+data: {"template_id": "uuid", "content": "..."}
+
+event: params_generated
+data: {"total_devices": 100, "params": [...]}
+
+event: execution_progress
+data: {
+  "type": "batch_complete",
+  "batch": 5,
+  "total_batches": 10,
+  "progress": 50,
+  "success": 48,
+  "failed": 2,
+  "current_device": "R50"
+}
+
+event: execution_complete
+data: {
+  "total_devices": 100,
+  "success": 98,
+  "failed": 2,
+  "duration_sec": 180
+}
+```
+
+### Data Flow Diagram
+
+```
+User Request
+    ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 1. API Layer (FastAPI)                                      │
+│    - Validates request                                      │
+│    - Creates session state                                  │
+│    - Returns template_id                                    │
+└──────────────────────┬──────────────────────────────────────┘
+                       ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 2. AI Agent (LangGraph)                                     │
+│    - Generate template (LLM call)                           │
+│    - Store in session manager                              │
+│    - Trigger interrupt 🔵                                   │
+└──────────────────────┬──────────────────────────────────────┘
+                       ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 3. HITL Checkpoint (Frontend Display)                       │
+│    - Show template to user                                  │
+│    - Wait for user action                                   │
+│    - [Confirm] [Modify] [Cancel]                            │
+└──────────────────────┬──────────────────────────────────────┘
+                       ↓ (User confirms)
+┌─────────────────────────────────────────────────────────────┐
+│ 4. AI Agent (LangGraph Resumes)                             │
+│    Path A: Generate params (LLM) ~5000 tokens              │
+│    Path B: Rule engine (0 tokens) ⚡                         │
+│    - Trigger interrupt 🔵                                   │
+└──────────────────────┬──────────────────────────────────────┘
+                       ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 5. HITL Checkpoint (Frontend Display)                       │
+│    - Show parameters to user                                │
+│    - Render configuration preview                          │
+│    - [Execute] [Modify] [Cancel]                            │
+└──────────────────────┬──────────────────────────────────────┘
+                       ↓ (User executes)
+┌─────────────────────────────────────────────────────────────┐
+│ 6. Execution Engine (Local, 0 tokens)                       │
+│    - Render templates (Jinja2)                              │
+│    - Batch execution (Nornir + Netmiko)                    │
+│    - Stream progress via SSE                                │
+└──────────────────────┬──────────────────────────────────────┘
+                       ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 7. Result Aggregation                                       │
+│    - Collect results from all devices                      │
+│    - Generate summary report                               │
+│    - Clean up session state                                │
+└──────────────────────┬──────────────────────────────────────┘
+                       ↓
+                  Return to User
+```
+
+### Error Handling Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Error Detection at Each Stage                               │
+└─────────────────────────────────────────────────────────────┘
+
+Template Generation Error:
+    ├─ Invalid Jinja2 syntax → [AI Retry] + [Show Error Context]
+    ├─ Incomplete template → [Request Clarification]
+    └─ LLM timeout → [Retry] + [Fallback to template library]
+
+Parameter Generation Error:
+    ├─ Missing device data → [Fetch from topology]
+    ├─ Invalid parameter values → [Validation Error] → [User Correction]
+    └─ Rule engine failure → [Fallback to AI generation]
+
+Execution Error:
+    ├─ Device unreachable → [Retry 3x] → [Mark as failed] → [Continue]
+    ├─ Invalid command → [Show error] → [Suggest fix] → [User decision]
+    └─ Authentication failure → [Pause] → [Request credentials]
+
+Error Recovery Strategies:
+    ├─ Automatic retry (transient errors)
+    ├─ Partial success handling (continue with remaining devices)
+    ├─ Rollback support (undo partial changes)
+    └─ User notification (SSE + UI alerts)
+```
+
+### Template Lifecycle Management
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Template Lifecycle                      │
+└─────────────────────────────────────────────────────────────┘
+
+1. DRAFT
+   ├─ Created by AI
+   ├─ Stored in session (temporary)
+   └─ User reviews and modifies
+
+2. CONFIRMED
+   ├─ User approved template
+   ├─ Stored in template library (persistent)
+   └─ Ready for parameter generation
+
+3. ACTIVE
+   ├─ Parameters generated
+   ├─ Ready for execution
+   └─ Can be cloned for similar tasks
+
+4. EXECUTED
+   ├─ Configuration applied
+   ├─ Results recorded
+   └─ Move to archive
+
+5. ARCHIVED
+   ├─ Historical record
+   ├─ Analytics data
+   └─ Cleanup after 90 days
+
+Version Control:
+    ├─ Each save creates new version
+    ├─ Semantic versioning (v1.0, v1.1, v2.0)
+    ├─ Diff view between versions
+    └─ Rollback to previous version
 ```
 
 ---
@@ -656,258 +731,112 @@ Template-Based Direct Execution:
 
 ### Rule Engine: Intelligent Parameter Generation
 
-```python
-# gns3server/agent/gns3_copilot/config_templates/param_generator.py
+**Concept:** Use rule-based logic instead of AI for generating parameters in large topologies.
 
-def generate_params_for_large_topology(
-    template: str,
-    topology_info: dict,
-    addressing_scheme: str = "sequential"
-) -> dict:
-    """
-    Generate parameters for 1000+ devices using rule-based logic.
+**How It Works:**
+```
+Input: Template + Topology (1000 devices)
+         ↓
+    Rule Engine (0 tokens)
+         ↓
+    Device Analysis
+    ├─ Extract numbering from names (R1 → 1, R2 → 2, ...)
+    ├─ Group by device type (routers, switches, firewalls)
+    ├─ Apply addressing scheme (sequential, VLAN-based, hierarchical)
+    └─ Generate parameters for each device
+         ↓
+Output: 1000 device parameter sets (< 1 second)
+```
 
-    Key features:
-    - Extract device numbering from names (R1, R2, ... R1000)
-    - Auto-assign IP addresses sequentially
-    - Group devices by type and apply patterns
-    - Zero AI token consumption
-    """
+**Addressing Schemes:**
+```
+1. Sequential (Default)
+   R1: 192.168.1.0/24
+   R2: 192.168.2.0/24
+   ...
+   R1000: 192.168.1000.0/24
 
-    nodes = topology_info.get("nodes", [])
+2. VLAN-Based
+   VLAN 100: 10.0.100.0/24
+   VLAN 101: 10.0.101.0/24
+   ...
 
-    # Group by device type
-    devices_by_type = group_by_device_type(nodes)
-    # Result: {"router": [R1, R2, ..., R500], "switch": [SW1, ..., SW500]}
+3. Hierarchical
+   Core routers: 10.0.0.0/24
+   Distribution: 10.1.0.0/16
+   Access switches: 10.100.0.0/16
 
-    device_params = []
-
-    for device_type, type_nodes in devices_by_type.items():
-        for idx, node in enumerate(type_nodes, start=1):
-            device_name = node.get("name")
-
-            # Extract device number from name
-            device_num = extract_device_number(device_name, idx)
-            # R1 → 1, Router-100 → 100, DeviceX → fallback to idx
-
-            # Generate parameters using rules
-            params = {
-                "device_name": device_name,
-                "process_id": 1,
-                "area": "0",
-                "router_id": f"1.1.1.{device_num}",
-                "networks": [
-                    {
-                        "ip": f"192.168.{device_num}.0",
-                        "mask": "0.0.0.255"
-                    }
-                ],
-                "loopback": {
-                    "ip": f"10.{device_num}.1.1",
-                    "mask": "255.255.255.255"
-                }
-            }
-
-            device_params.append(params)
-
-    return {
-        "device_params": device_params,
-        "total_devices": len(device_params),
-        "generation_method": "rule_engine",
-        "addressing_scheme": addressing_scheme
-    }
-
-
-# Example: 1000 devices configured in < 1 second
-# Token cost: 0 (pure rule-based logic)
+4. Device Type Based
+   Routers: 192.168.0.0/16
+   Switches: 192.169.0.0/16
+   Firewalls: 192.170.0.0/16
 ```
 
 ### Batch Parallel Execution
 
-```python
-# gns3server/agent/gns3_copilot/tools_v2/config_tools_nornir.py
-
-class ExecuteTemplateBasedConfig(BaseTool):
-    """Optimized for large-scale parallel execution."""
-
-    def _run(self, tool_input: str | dict) -> dict:
-        """Execute configuration with dynamic batching."""
-
-        device_params = data.get("device_params", [])
-        total_devices = len(device_params)
-
-        # 🔥 Dynamic batch sizing based on device count
-        if total_devices <= 10:
-            batch_size = 10
-        elif total_devices <= 50:
-            batch_size = 20
-        elif total_devices <= 100:
-            batch_size = 30
-        elif total_devices <= 500:
-            batch_size = 50
-        else:  # 500+ devices
-            batch_size = 100  # High concurrency for large topologies
-
-        results = {
-            "total_devices": total_devices,
-            "batch_size": batch_size,
-            "total_batches": (total_devices + batch_size - 1) // batch_size,
-            "batches": []
-        }
-
-        # Process in batches with progress tracking
-        for batch_num in range(0, total_devices, batch_size):
-            batch_end = min(batch_num + batch_size, total_devices)
-            batch_params = device_params[batch_num:batch_end]
-
-            # Render configs for this batch
-            batch_configs = [
-                {
-                    "device_name": p["device_name"],
-                    "config_commands": renderer.render(template, p)
-                }
-                for p in batch_params
-            ]
-
-            # Execute batch in parallel using Nornir
-            batch_result = self._execute_batch_parallel(
-                project_id,
-                batch_configs,
-                batch_num // batch_size + 1
-            )
-
-            results["batches"].append(batch_result)
-
-            # Yield progress for SSE streaming
-            yield_progress({
-                "type": "batch_complete",
-                "batch": batch_num // batch_size + 1,
-                "progress": int((batch_end / total_devices) * 100)
-            })
-
-        return results
+**Dynamic Batching Strategy:**
+```
+Device Count    Batch Size    Concurrency    Estimated Time
+────────────────────────────────────────────────────────────
+1-10            10            10             < 30 seconds
+11-50           20            20             < 1 minute
+51-100          30            30             1-2 minutes
+101-500         50            50             2-5 minutes
+500+            100           100            3-8 minutes
 ```
 
-### Real-Time Progress Streaming
-
-```typescript
-// Frontend: Large-scale configuration progress UI
-
-class LargeScaleConfigProgress {
-  displayProgress() {
-    // Show progress bar for 1000 devices
-    return `
-      <div class="config-progress">
-        <h3>⚙️ Configuring 1000 Devices</h3>
-
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: 0%"></div>
-        </div>
-
-        <div class="stats">
-          <div class="stat success">
-            <span class="icon">✅</span>
-            <span class="label">Success:</span>
-            <span class="value" id="success-count">0</span>
-          </div>
-
-          <div class="stat failed">
-            <span class="icon">❌</span>
-            <span class="label">Failed:</span>
-            <span class="value" id="failed-count">0</span>
-          </div>
-
-          <div class="stat progress">
-            <span class="icon">📊</span>
-            <span class="label">Progress:</span>
-            <span class="value" id="progress-text">0%</span>
-          </div>
-
-          <div class="stat time">
-            <span class="icon">⏱️</span>
-            <span class="label">ETA:</span>
-            <span class="value" id="eta">~5 min</span>
-          </div>
-        </div>
-
-        <div class="current-batch">
-          <span id="batch-info">Preparing...</span>
-        </div>
-      </div>
-    `;
-  }
-
-  updateProgress(data) {
-    // Update progress bar
-    const fill = document.querySelector('.progress-fill');
-    fill.style.width = `${data.progress}%`;
-
-    // Update stats
-    document.getElementById('success-count').textContent = data.success;
-    document.getElementById('failed-count').textContent = data.failed;
-    document.getElementById('progress-text').textContent = `${data.progress}%`;
-    document.getElementById('batch-info').textContent =
-      `Batch ${data.batch}/20: Configuring devices ${data.range}...`;
-  }
-}
+**Execution Flow:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Batch 1: Devices 1-100                                       │
+│ ├─ Render 100 configs (Jinja2, local)                        │
+│ ├─ Execute in parallel (Nornir + Netmiko)                   │
+│ ├─ Collect results                                           │
+│ └─ Stream progress: "Batch 1/10 complete, 35% done"         │
+├─────────────────────────────────────────────────────────────┤
+│ Batch 2: Devices 101-200                                     │
+│ └─ ...                                                       │
+├─────────────────────────────────────────────────────────────┤
+│ ...                                                          │
+├─────────────────────────────────────────────────────────────┤
+│ Batch 10: Devices 901-1000                                   │
+│ └─ Complete: 997 success, 3 failed                          │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### Configuration Summary for Large Topologies
 
-For 1000 devices, showing full configurations is impractical. Instead, provide **intelligent summaries**:
+**Challenge:** Showing 1000 device configurations is impractical.
 
-```python
-class ConfigSummaryGenerator:
-    """Generate summaries for large-scale configurations."""
+**Solution:** Intelligent summaries with pattern analysis.
 
-    def generate_summary(self, template: str, device_params: list) -> dict:
-        """
-        Generate configuration summary for 1000+ devices.
-
-        Shows:
-        - Pattern analysis (how many unique config patterns)
-        - Sample configs (first 3 devices)
-        - IP addressing scheme used
-        - Estimated total lines of configuration
-        """
-
-        total_devices = len(device_params)
-
-        # Render all configs to analyze patterns
-        renderer = ConfigTemplateRenderer()
-        all_configs = {}
-
-        for params in device_params:
-            device_name = params["device_name"]
-            config = renderer.render(template, params)
-            all_configs[device_name] = config
-
-        # Analyze patterns
-        unique_patterns = {}
-        for device_name, config in all_configs.items():
-            pattern_hash = hash(tuple(config))
-            if pattern_hash not in unique_patterns:
-                unique_patterns[pattern_hash] = []
-            unique_patterns[pattern_hash].append(device_name)
-
-        # Generate summary
-        return {
-            "total_devices": total_devices,
-            "unique_patterns": len(unique_patterns),
-            "patterns": [
-                {
-                    "count": len(devices),
-                    "sample_devices": devices[:5] + ["..."] if len(devices) > 5 else devices,
-                    "config_preview": all_configs[devices[0]][:5]  # First 5 lines
-                }
-                for devices in unique_patterns.values()
-            ],
-            "estimated_total_lines": sum(len(c) for c in all_configs.values()),
-            "examples": {
-                device_name: all_configs[device_name]
-                for device_name in list(all_configs.keys())[:3]  # First 3 only
-            }
-        }
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Configuration Summary: 1000 Devices                          │
+├─────────────────────────────────────────────────────────────┤
+│ Total Devices:        1,000                                  │
+│ Unique Patterns:      3                                     │
+│ Total Config Lines:   ~15,000                               │
+│ Estimated Time:       ~5 minutes                            │
+├─────────────────────────────────────────────────────────────┤
+│ Pattern Analysis:                                              │
+│ • Pattern A (650 devices): Standard OSPF config             │
+│ • Pattern B (300 devices): OSPF + BGP                       │
+│ • Pattern C (50 devices):  OSPF + BGP + MPLS                │
+├─────────────────────────────────────────────────────────────┤
+│ Sample Configurations (first 3):                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ Device: R1 (Pattern A)                                  │ │
+│ │ router ospf 1                                          │ │
+│ │  network 192.168.1.0 0.0.0.255 area 0                  │ │
+│ │  network 10.1.1.1 0.0.0.0 area 0                       │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ Device: R2 (Pattern A)                                  │ │
+│ │ [Similar to R1, different IPs]                          │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│ ...                                                          │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### Performance Benchmarks
@@ -1098,432 +1027,154 @@ User Request: "Create a data center topology with 2 core routers,
 
 ### Node Template Schema
 
-```python
-# gns3server/schemas/controller/node_template.py
+**Concept:** Define groups of similar nodes with positioning and auto-linking.
 
-class NodeCreationTemplate(BaseModel):
-    """Template for batch node creation."""
-
-    # Node groups to create
-    node_groups: List[NodeGroupTemplate] = Field(
-        ...,
-        description="Groups of nodes with same template"
-    )
-
-    # Layout strategy
-    layout: Literal[
-        "auto_grid",           # Automatic grid layout
-        "auto_spine_leaf",     # Spine-Leaf topology
-        "auto_star",           # Star topology
-        "auto_mesh",           # Mesh topology
-        "manual"               # Manual coordinates
-    ] = Field(default="auto_grid")
-
-    # Resource constraints
-    resource_limits: Optional[ResourceLimits] = Field(None)
-
-    # Auto-link configuration
-    auto_link: Optional[AutoLinkConfig] = Field(
-        None,
-        description="Automatically create links between nodes"
-    )
-
-
-class NodeGroupTemplate(BaseModel):
-    """Template for a group of similar nodes."""
-
-    # Node type and count
-    node_type: str = Field(..., description="GNS3 node template type")
-    count: int = Field(..., ge=1, le=10000)
-
-    # Naming convention
-    name_pattern: str = Field(
-        ...,
-        description="Name pattern with {{ id }} placeholder, e.g., 'R{{ id }}'"
-    )
-    id_start: int = Field(default=1, description="Starting ID number")
-
-    # Node properties
-    properties: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Node properties (RAM, CPUs, adapters, etc.)"
-    )
-
-    # Positioning
-    position: Optional[PositionSpec] = Field(None)
-
-
-class PositionSpec(BaseModel):
-    """Position specification for node group."""
-
-    strategy: Literal[
-        "auto",           # Auto-calculate
-        "grid",           # Grid arrangement
-        "circle",         # Circular arrangement
-        "hierarchical",   # Hierarchical layout
-        "random"          # Random distribution
-    ] = Field(default="auto")
-
-    # Grid parameters
-    grid_rows: Optional[int] = Field(None)
-    grid_cols: Optional[int] = Field(None)
-
-    # Positioning
-    x_start: Optional[int] = Field(None, description="Starting X coordinate")
-    y_start: Optional[int] = Field(None, description="Starting Y coordinate")
-    x_spacing: int = Field(default=200, description="Horizontal spacing")
-    y_spacing: int = Field(default=150, description="Vertical spacing")
-
-
-class AutoLinkConfig(BaseModel):
-    """Automatic link creation between node groups."""
-
-    links: List[LinkPattern] = Field(
-        ...,
-        description="Link patterns to create"
-    )
-
-
-class LinkPattern(BaseModel):
-    """Pattern for creating links between node groups."""
-
-    from_group: str = Field(..., description="Source node group name")
-    to_group: str = Field(..., description="Destination node group name")
-    link_type: str = Field(default="ethernet")
-    count: int = Field(default=1, description="Links per node pair")
-    strategy: Literal[
-        "mesh",          # Full mesh between groups
-        "linear",        # Linear connection
-        "paired",        # One-to-one pairing
-        "custom"         # Custom pattern
-    ] = Field(default="mesh")
+**Schema Structure:**
+```
+NodeCreationTemplate
+├─ node_groups: List[NodeGroup]
+│   ├─ node_type: "cisco_iosv" | "vpcs" | ...
+│   ├─ count: 100
+│   ├─ name_pattern: "R{{ id }}"  → R1, R2, ..., R100
+│   ├─ properties: {ram, cpus, adapters}
+│   └─ position: {strategy, grid, spacing}
+├─ layout: "auto_grid" | "auto_spine_leaf" | "auto_star" | ...
+├─ auto_link: AutoLinkConfig
+│   └─ links: List[LinkPattern]
+└─ resource_limits: {max_ram_mb, max_vcpus}
 ```
 
-### Auto-Linking: Create Topologies with Connections
-
-Node creation templates can also automatically create links:
-
-```python
-# Example: Create spine-leaf topology with links
-
+**Example: Spine-Leaf Topology**
+```
 {
-    "node_groups": [
-        {
-            "name": "spine",
-            "node_type": "cisco_iosv",
-            "count": 4,
-            "name_pattern": "Spine{{ id }}",
-            "position": {"y": 100, "x_spacing": 400}
-        },
-        {
-            "name": "leaf",
-            "node_type": "cisco_iosv_l2",
-            "count": 48,
-            "name_pattern": "Leaf{{ id }}",
-            "position": {"grid": "6x8", "y": 400}
-        }
-    ],
-    "auto_link": {
-        "links": [
-            {
-                "from_group": "spine",
-                "to_group": "leaf",
-                "strategy": "mesh",  # Each spine connects to all leafs
-                "count": 1
-            }
-        ]
+  "node_groups": [
+    {
+      "name": "spine",
+      "node_type": "cisco_iosv",
+      "count": 4,
+      "name_pattern": "Spine{{ id }}",
+      "position": {"y": 100, "x_spacing": 400}
+    },
+    {
+      "name": "leaf",
+      "node_type": "cisco_iosv_l2",
+      "count": 48,
+      "name_pattern": "Leaf{{ id }}",
+      "position": {"grid": "6x8", "y": 400}
     }
+  ],
+  "auto_link": {
+    "links": [
+      {
+        "from": "spine",
+        "to": "leaf",
+        "strategy": "mesh"  # Each spine to all leafs
+      }
+    ]
+  }
 }
 
-# Result: 4 spine switches, 48 leaf switches, 192 links (4×48)
-# Created in ~2-3 minutes
+Result: 4 spine + 48 leaf + 192 links (4×48)
+Time: ~2-3 minutes
 ```
 
-### Batch Node Creation Tool
+### Automatic Layout Strategies
 
-```python
-# gns3server/agent/gns3_copilot/tools_v2/node_template_tools.py
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Grid Layout (auto_grid)                                  │
+│                                                              │
+│   [1]  [2]  [3]  [4]  [5]                                   │
+│   [6]  [7]  [8]  [9]  [10]                                  │
+│   [11] [12] [13] [14] [15]                                  │
+│                                                              │
+│   Best for: Uniform node types, regular topologies         │
+└─────────────────────────────────────────────────────────────┘
 
-class ExecuteBatchNodeCreation(BaseTool):
-    """
-    Batch create nodes from template.
+┌─────────────────────────────────────────────────────────────┐
+│ 2. Spine-Leaf (auto_spine_leaf)                             │
+│                                                              │
+│   [Spine1]--------[Spine2]                                  │
+│      |  |  |  |      |  |  |  |                             │
+│   [Leaf1..Leaf48]  [Leaf49..Leaf96]                         │
+│                                                              │
+│   Best for: Data center fabrics                             │
+└─────────────────────────────────────────────────────────────┘
 
-    Features:
-    - Parallel creation (20-50 concurrent)
-    - Automatic positioning and layout
-    - Resource validation before creation
-    - Progress streaming via SSE
-    - Error isolation (single failure doesn't stop others)
-    """
+┌─────────────────────────────────────────────────────────────┐
+│ 3. Star (auto_star)                                         │
+│                                                              │
+│              [Core]                                         │
+│            /  |  |  \                                       │
+│        [Edge1..Edge20]                                      │
+│                                                              │
+│   Best for: Hub-and-spoke topologies                        │
+└─────────────────────────────────────────────────────────────┘
 
-    name = "execute_batch_node_creation"
-    description = "Batch create nodes from template (0 token cost)"
+┌─────────────────────────────────────────────────────────────┐
+│ 4. Hierarchical (manual)                                    │
+│                                                              │
+│   [Core1]     [Core2]                                       │
+│      |            |                                         │
+│   [Agg1..Agg10]                                            │
+│      /    |   |    \                                        │
+│  [Acc1..Acc100]                                            │
+│                                                              │
+│   Best for: Enterprise campus networks                      │
+└─────────────────────────────────────────────────────────────┘
+```
 
-    def _run(self, tool_input: str | dict) -> dict:
-        """Execute batch node creation."""
+### Auto-Linking Strategies
 
-        data = json.loads(tool_input) if isinstance(tool_input, str) else tool_input
-        project_id = data.get("project_id")
-        node_template = data.get("node_template")
+```
+Link Pattern Strategies:
 
-        total_nodes = sum(g["count"] for g in node_template["node_groups"])
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Mesh (Full Mesh)                                         │
+│                                                              │
+│   [A] ←→ [B]                                                │
+│    ↑ ↖  ↑ ↗                                                │
+│    |  \ |  |                                                │
+│   [D] ←→ [C]                                                │
+│                                                              │
+│   Every node connects to every other node                   │
+│   Links: n×(n-1)/2                                          │
+│   Best for: High availability, small groups                │
+└─────────────────────────────────────────────────────────────┘
 
-        # Dynamic batch sizing based on scale
-        if total_nodes <= 50:
-            batch_size = 10
-        elif total_nodes <= 200:
-            batch_size = 20
-        elif total_nodes <= 500:
-            batch_size = 30
-        else:  # 500+ nodes
-            batch_size = 50
+┌─────────────────────────────────────────────────────────────┐
+│ 2. Paired (One-to-One)                                      │
+│                                                              │
+│   [Group A: A1, A2, A3...]                                  │
+│         ↓  ↓  ↓                                            │
+│   [Group B: B1, B2, B3...]                                  │
+│                                                              │
+│   A1→B1, A2→B2, A3→B3, ...                                 │
+│   Links: min(count_A, count_B)                              │
+│   Best for: Point-to-point connections                     │
+└─────────────────────────────────────────────────────────────┘
 
-        results = {
-            "total_nodes": total_nodes,
-            "batch_size": batch_size,
-            "groups": [],
-            "auto_links": []
-        }
+┌─────────────────────────────────────────────────────────────┐
+│ 3. Linear (Chain)                                           │
+│                                                              │
+│   [A1]→[A2]→[A3]→[A4]→...→[An]                             │
+│                                                              │
+│   Sequential connection                                     │
+│   Links: n-1                                                │
+│   Best for: Ring topologies, daisy-chains                  │
+└─────────────────────────────────────────────────────────────┘
 
-        # Check resource availability
-        if node_template.get("resource_limits"):
-            availability = self._check_resources(project_id, node_template["resource_limits"])
-            if not availability["available"]:
-                return {
-                    "error": "Insufficient resources",
-                    "details": availability["shortfall"]
-                }
-
-        # Create each node group
-        for group in node_template["node_groups"]:
-            group_result = self._create_node_group(
-                project_id,
-                group,
-                batch_size,
-                node_template["layout"]
-            )
-            results["groups"].append(group_result)
-
-            # Yield progress for SSE streaming
-            yield_progress({
-                "type": "group_complete",
-                "group_name": group.get("name", "unknown"),
-                "progress": group_result["created"]
-            })
-
-        # Create auto-links if specified
-        if node_template.get("auto_link"):
-            links_result = self._create_auto_links(
-                project_id,
-                node_template["auto_link"],
-                results["groups"]
-            )
-            results["auto_links"] = links_result
-
-        return results
-
-    def _create_node_group(
-        self,
-        project_id: str,
-        group_template: dict,
-        batch_size: int,
-        layout_strategy: str
-    ) -> dict:
-        """Create a group of nodes with same template."""
-
-        count = group_template["count"]
-        name_pattern = group_template["name_pattern"]
-        id_start = group_template.get("id_start", 1)
-        properties = group_template.get("properties", {})
-
-        # Generate node specifications
-        nodes_to_create = []
-        for i in range(count):
-            node_id = id_start + i
-            node_name = name_pattern.replace("{{ id }}", str(node_id))
-
-            # Calculate position
-            position = self._calculate_position(
-                i, count, layout_strategy, group_template
-            )
-
-            nodes_to_create.append({
-                "name": node_name,
-                "node_type": group_template["node_type"],
-                "properties": properties,
-                "x": position["x"],
-                "y": position["y"]
-            })
-
-        # Create in batches
-        created_nodes = []
-        failed_nodes = []
-
-        for batch_start in range(0, count, batch_size):
-            batch_end = min(batch_start + batch_size, count)
-            batch_nodes = nodes_to_create[batch_start:batch_end]
-
-            # Parallel creation
-            batch_results = await self._create_batch_parallel(
-                project_id, batch_nodes
-            )
-
-            for result in batch_results:
-                if result["status"] == "success":
-                    created_nodes.append(result)
-                else:
-                    failed_nodes.append(result)
-
-            # Progress update
-            yield_progress({
-                "type": "batch_complete",
-                "progress": int((batch_end / count) * 100),
-                "created": len(created_nodes),
-                "failed": len(failed_nodes)
-            })
-
-        return {
-            "node_type": group_template["node_type"],
-            "total": count,
-            "created": len(created_nodes),
-            "failed": len(failed_nodes),
-            "nodes": created_nodes,
-            "errors": failed_nodes
-        }
-
-    def _calculate_position(
-        self,
-        index: int,
-        total: int,
-        layout: str,
-        group_spec: dict
-    ) -> dict:
-        """Calculate node position based on layout strategy."""
-
-        position = group_spec.get("position", {})
-        strategy = position.get("strategy", "auto")
-
-        if strategy == "grid":
-            # Grid layout
-            cols = position.get("grid_cols") or int(math.sqrt(total)) + 1
-            row = index // cols
-            col = index % cols
-
-            return {
-                "x": (position.get("x_start") or 100) + col * position.get("x_spacing", 200),
-                "y": (position.get("y_start") or 100) + row * position.get("y_spacing", 150)
-            }
-
-        elif strategy == "hierarchical" or layout == "auto_spine_leaf":
-            # Hierarchical: Core → Aggregation → Access
-            node_type = group_spec.get("node_type", "").lower()
-
-            if "core" in node_type or "spine" in node_type:
-                # Top layer
-                x = 100 + index * 600
-                y = 100
-            elif "agg" in node_type or "leaf" in node_type:
-                # Middle layer
-                cols = int(math.sqrt(total)) + 1
-                row = index // cols
-                col = index % cols
-                x = 100 + col * 300
-                y = 400 + row * 200
-            else:
-                # Bottom layer
-                x = 100 + (index % 20) * 150
-                y = 800 + (index // 20) * 150
-
-            return {"x": x, "y": y}
-
-        else:  # auto or default
-            return {
-                "x": 100 + (index * 200) % 2000,
-                "y": 100 + (index // 10) * 150
-            }
-
-    async def _create_batch_parallel(
-        self,
-        project_id: str,
-        nodes: list[dict]
-    ) -> list[dict]:
-        """Create a batch of nodes in parallel."""
-        import asyncio
-
-        async def create_single(node_spec: dict) -> dict:
-            """Create a single node."""
-            try:
-                # Call GNS3 create_node API
-                node_id = await self._call_gns3_create_node(
-                    project_id, node_spec
-                )
-                return {
-                    "name": node_spec["name"],
-                    "status": "success",
-                    "node_id": node_id,
-                    "x": node_spec["x"],
-                    "y": node_spec["y"]
-                }
-            except Exception as e:
-                return {
-                    "name": node_spec["name"],
-                    "status": "failed",
-                    "error": str(e)
-                }
-
-        tasks = [create_single(node) for node in nodes]
-        return await asyncio.gather(*tasks)
-
-    def _create_auto_links(
-        self,
-        project_id: str,
-        auto_link_config: dict,
-        created_groups: list[dict]
-    ) -> dict:
-        """Automatically create links between node groups."""
-
-        links_created = []
-
-        for link_pattern in auto_link_config.get("links", []):
-            from_group_name = link_pattern["from_group"]
-            to_group_name = link_pattern["to_group"]
-            strategy = link_pattern.get("strategy", "mesh")
-
-            # Find the created nodes in each group
-            from_nodes = self._get_nodes_by_group(created_groups, from_group_name)
-            to_nodes = self._get_nodes_by_group(created_groups, to_group_name)
-
-            # Create links based on strategy
-            if strategy == "mesh":
-                # Full mesh: every from_node connects to every to_node
-                for from_node in from_nodes:
-                    for to_node in to_nodes:
-                        link_result = self._create_link(
-                            project_id, from_node, to_node, link_pattern
-                        )
-                        links_created.append(link_result)
-
-            elif strategy == "paired":
-                # One-to-one pairing
-                for from_node, to_node in zip(from_nodes, to_nodes):
-                    link_result = self._create_link(
-                        project_id, from_node, to_node, link_pattern
-                    )
-                    links_created.append(link_result)
-
-            elif strategy == "linear":
-                # Linear chain
-                for i in range(min(len(from_nodes), len(to_nodes)) - 1):
-                    link_result = self._create_link(
-                        project_id, from_nodes[i], to_nodes[i + 1], link_pattern
-                    )
-                    links_created.append(link_result)
-
-        return {
-            "total_links": len(links_created),
-            "created": sum(1 for l in links_created if l["status"] == "success"),
-            "links": links_created
-        }
+┌─────────────────────────────────────────────────────────────┐
+│ 4. One-to-Many (Star)                                       │
+│                                                              │
+│         [Center]                                            │
+│       /  |  |  \                                            │
+│     [E1][E2][E3][E4]...                                      │
+│                                                              │
+│   Center connects to all edge nodes                         │
+│   Links: count_edge                                         │
+│   Best for: Hub-and-spoke                                   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### Performance Benchmarks
@@ -2134,76 +1785,110 @@ TOTAL: Large Data Center
 
 ### Jinja2 Configuration
 
-```python
-# Network device configurations require special handling
-Environment(
-    # Preserve indentation for config hierarchy
-    trim_l_blocks=True,      # Remove block left whitespace
-    trim_r_blocks=True,      # Remove block right whitespace
-    lstrip_blocks=True,      # Strip leading whitespace from lines
-
-    # Don't escape configuration commands
-    autoescape=False,
-
-    # Custom filters for network operations
-    filters={
-        'to_cidr': lambda ip, mask: f"{ip}/{mask}",
-        'ip_network': lambda ip: ipaddr.IPv4Network(ip),
-        # Add more as needed
-    }
-)
+**Key Settings for Network Configs:**
 ```
+Environment Configuration:
+├─ trim_l_blocks=True       # Remove block left whitespace
+├─ trim_r_blocks=True       # Remove block right whitespace
+├─ lstrip_blocks=True       # Strip leading whitespace
+├─ autoescape=False         # Don't escape config commands
+└─ Custom Filters
+   ├─ to_cidr: Convert IP+mask to CIDR
+   ├─ ip_network: Parse IP network
+   └─ Wildcard to CIDR conversion
+```
+
+**Supported Template Features:**
+- Variables: `{{ hostname }}`
+- Loops: `{% for interface in interfaces %}...{% endfor %}`
+- Conditionals: `{% if ospf_enabled %}...{% endif %}`
+- Filters: `{{ ip | to_cidr }}`
+- Comments: `{# This is a comment #}`
 
 ### Security Considerations
 
-1. **Template Validation:**
-   - Validate template syntax before rendering
-   - Check for dangerous operations (file I/O, system calls)
-   - Sandbox Jinja2 environment
+**Template Validation:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Template Security Checks                                    │
+├─────────────────────────────────────────────────────────────┤
+│ 1. Syntax Validation                                        │
+│    ├─ Parse Jinja2 syntax                                   │
+│    ├─ Check for undefined variables                         │
+│    └─ Validate template structure                           │
+│                                                              │
+│ 2. Sandbox Enforcement                                      │
+│    ├─ Disable dangerous built-ins (eval, exec, import)      │
+│    ├─ Limit template complexity (max loops, recursion)      │
+│    └─ Restrict available filters                            │
+│                                                              │
+│ 3. Content Security                                         │
+│    ├─ Scan for command injection attempts                   │
+│    ├─ Validate against forbidden commands list              │
+│    └─ Audit logging for all templates                       │
+└─────────────────────────────────────────────────────────────┘
+```
 
-2. **Parameter Validation:**
-   - Type checking for all parameters
-   - Range validation (IP addresses, VLAN IDs, etc.)
-   - Device-specific validation
-
-3. **Command Filtering:**
-   - Apply existing `command_filter.py` checks
-   - Integrate with forbidden commands list
-   - Maintain audit logging
+**Parameter Validation:**
+```
+Validation Layers:
+├─ Type Checking
+│  └─ int, str, List[Dict], etc.
+├─ Range Validation
+│  ├─ IP addresses (valid format)
+│  ├─ VLAN IDs (1-4094)
+│  └─ Port numbers (1-65535)
+├─ Device-Specific Validation
+│  └─ Check device capabilities
+└─ Business Logic Validation
+   └─ Network-specific rules
+```
 
 ### Error Handling Strategy
 
-```python
-class TemplateExecutionError(Exception):
-    """Base class for template execution errors."""
-    pass
+**Error Categories:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Error Types & Recovery Strategies                           │
+├─────────────────────────────────────────────────────────────┤
+│ 1. TemplateSyntaxError                                      │
+│    ├─ Cause: Invalid Jinja2 syntax                          │
+│    ├─ Detection: Pre-rendering validation                   │
+│    └─ Recovery: [Show error] → [User fixes] → [Retry]      │
+│                                                              │
+│ 2. ParameterValidationError                                 │
+│    ├─ Cause: Wrong type/value/range                         │
+│    ├─ Detection: Pre-execution validation                   │
+│    └─ Recovery: [Highlight errors] → [User corrects]        │
+│                                                              │
+│ 3. RenderingError                                           │
+│    ├─ Cause: Runtime rendering failure                      │
+│    ├─ Detection: During template render                     │
+│    └─ Recovery: [Show context] → [User modifies params]     │
+│                                                              │
+│ 4. ExecutionError                                           │
+│    ├─ Cause: Device connection/command failure              │
+│    ├─ Detection: During config execution                    │
+│    └─ Recovery: [Retry] → [Skip] → [Continue others]        │
+└─────────────────────────────────────────────────────────────┘
+```
 
-class TemplateSyntaxError(TemplateExecutionError):
-    """Template has invalid Jinja2 syntax."""
-    pass
-
-class ParameterValidationError(TemplateExecutionError):
-    """Parameters don't match template schema."""
-    pass
-
-class RenderingError(TemplateExecutionError):
-    """Error during template rendering."""
-    pass
-
-# Error response format
+**Error Response Format:**
+```json
 {
-    "error": "error_type",
-    "message": "Human-readable error message",
-    "details": {
-        "template": "...",
-        "params": {...},
-        "traceback": "..."  # Only in development
-    },
-    "suggestions": [
-        "Check template syntax",
-        "Verify parameter types",
-        "Review device compatibility"
-    ]
+  "error": "ParameterValidationError",
+  "message": "Invalid IP address format for device R1",
+  "details": {
+    "device": "R1",
+    "parameter": "interface.ip",
+    "value": "999.999.999.999",
+    "expected": "Valid IPv4 address (e.g., 192.168.1.1)"
+  },
+  "suggestions": [
+    "Verify IP address format",
+    "Check for typos in address",
+    "Ensure address is in correct range"
+  ]
 }
 ```
 
@@ -2213,85 +1898,117 @@ class RenderingError(TemplateExecutionError):
 
 ### Unit Tests
 
-```python
-# tests/test_template_renderer.py
-def test_simple_template_rendering():
-    template = "interface {{ name }}\n ip address {{ ip }} {{ mask }}"
-    params = {"name": "GigabitEthernet0/0", "ip": "192.168.1.1", "mask": "255.255.255.0"}
-    renderer = ConfigTemplateRenderer()
-    result = renderer.render(template, params)
-    assert result == [
-        "interface GigabitEthernet0/0",
-        "ip address 192.168.1.1 255.255.255.0"
-    ]
+**Template Rendering Tests:**
+```
+Test Cases:
+├─ Simple Variables
+│  └─ Input: "hostname {{ name }}" + {name: "R1"}
+│     Output: ["hostname R1"]
+│
+├─ Loops
+│  └─ Input: "{% for n in nets %}network {{ n }}\n{% endfor %}"
+│          + {nets: ["192.168.1.0", "192.168.2.0"]}
+│     Output: ["network 192.168.1.0", "network 192.168.2.0"]
+│
+├─ Conditionals
+│  └─ Input: "{% if ospf %}router ospf 1\n{% endif %}"
+│          + {ospf: true}
+│     Output: ["router ospf 1"]
+│
+└─ Nested Structures
+   └─ Input: Complex multi-level config
+      Output: Properly indented commands
+```
 
-def test_loop_template_rendering():
-    template = "{% for n in networks %}network {{ n }}\n{% endfor %}"
-    params = {"networks": ["192.168.1.0", "192.168.2.0"]}
-    renderer = ConfigTemplateRenderer()
-    result = renderer.render(template, params)
-    assert result == ["network 192.168.1.0", "network 192.168.2.0"]
-
-def test_conditional_template_rendering():
-    template = "{% if ospf %}router ospf 1\n{% endif %}exit"
-    params = {"ospf": True}
-    renderer = ConfigTemplateRenderer()
-    result = renderer.render(template, params)
-    assert "router ospf 1" in result
+**Rule Engine Tests:**
+```
+Test Cases:
+├─ Device Number Extraction
+│  ├─ "R1" → 1
+│  ├─ "Router-100" → 100
+│  └─ "DeviceX" → fallback to index
+│
+├─ IP Address Generation
+│  ├─ Sequential: 192.168.1.0, 192.168.2.0, ...
+│  ├─ VLAN-based: 10.0.100.0, 10.0.101.0, ...
+│  └─ Hierarchical: Correct prefix assignment
+│
+└─ Parameter Validation
+   ├─ Type checking
+   ├─ Range validation
+   └─ Device-specific constraints
 ```
 
 ### Integration Tests
 
-```python
-# tests/test_template_workflow_integration.py
-def test_full_template_workflow():
-    """Test complete HITL workflow from template to execution."""
-    # Step 1: Generate template
-    template_tool = GenerateConfigTemplate()
-    template_result = template_tool._run({
-        "project_id": test_project_id,
-        "device_type": "cisco_ios",
-        "requirement": "Configure OSPF"
-    })
-    assert "template_content" in template_result
-
-    # Step 2: Generate params
-    params_tool = GenerateTemplateParams()
-    params_result = params_tool._run({
-        "project_id": test_project_id,
-        "confirmed_template": template_result
-    })
-    assert "device_params" in params_result
-
-    # Step 3: Execute
-    execute_tool = ExecuteTemplateBasedConfig()
-    exec_result = execute_tool._run({
-        "project_id": test_project_id,
-        "confirmed_template": template_result["template_content"],
-        "confirmed_params": params_result["device_params"]
-    })
-    assert "results" in exec_result
+**Full HITL Workflow:**
+```
+Test Scenario:
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Template Generation                                      │
+│    ├─ Input: "Configure OSPF on 10 routers"                │
+│    ├─ Expected: Valid Jinja2 template with schema          │
+│    └─ Verify: Template syntax, parameter completeness      │
+│                                                              │
+│ 2. Parameter Generation (AI mode)                          │
+│    ├─ Input: Template + topology context                   │
+│    ├─ Expected: 10 device parameter sets                   │
+│    └─ Verify: Correct IP assignment, device mapping        │
+│                                                              │
+│ 3. Parameter Generation (Direct mode)                      │
+│    ├─ Input: Template + topology (100 devices)             │
+│    ├─ Expected: 100 parameter sets (0 tokens)              │
+│    └─ Verify: Rule engine logic, addressing schemes        │
+│                                                              │
+│ 4. Execution                                                │
+│    ├─ Input: Template + parameters                         │
+│    ├─ Expected: Successful configuration on all devices    │
+│    └─ Verify: Config applied, execution results            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### End-to-End Tests
 
-```python
-# tests/test_e2e_template_config.py
-def test_ospf_configuration_10_routers():
-    """Test OSPF configuration on 10 routers."""
-    # Setup: Create GNS3 project with 10 routers
-    project_id = create_test_project(device_count=10)
+**Large-Scale Topology Test:**
+```
+Scenario: 1000 Router OSPF Configuration
 
-    # Execute workflow
-    result = run_template_workflow(
-        project_id=project_id,
-        requirement="Configure OSPF on all routers"
-    )
+Setup:
+├─ Create GNS3 project with 1000 routers
+├─ Deploy in test environment
+└─ Verify connectivity
 
-    # Verify
-    assert result["status"] == "success"
-    assert len(result["configured_devices"]) == 10
-    assert all(["ospf" in dev["config"] for dev in result["configured_devices"]])
+Execution:
+├─ Generate template (~150 tokens)
+├─ Generate params (rule engine, 0 tokens)
+├─ Execute in batches of 100
+└─ Monitor progress via SSE
+
+Validation:
+├─ Verify all 1000 devices configured
+├─ Check OSPF process running on each
+├─ Verify IP addressing correctness
+├─ Measure execution time (< 8 minutes)
+└─ Verify token consumption (~400 total)
+
+Cleanup:
+└─ Remove test project
+```
+
+**Performance Tests:**
+```
+Benchmarks:
+├─ 10 devices: < 30 seconds
+├─ 50 devices: < 1 minute
+├─ 100 devices: 1-2 minutes
+├─ 500 devices: 2-5 minutes
+└─ 1000 devices: 3-8 minutes
+
+Metrics:
+├─ Token usage (target: 99%+ reduction)
+├─ Execution time (vs. baseline)
+├─ Memory usage
+└─ Concurrent connection handling
 ```
 
 ---
@@ -2402,6 +2119,8 @@ langgraph>=0.0.20
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-20 | 0.5 | **Major documentation refactor** - Reduced code content by ~60%, added comprehensive diagrams: System architecture, HITL state transitions, API design, data flow, error handling, template lifecycle; Enhanced section on testing strategy; Improved visual documentation |
+| 2026-03-20 | 0.4 | Added link creation templates section with topology patterns (Spine-Leaf, Ring, Mesh, Star), intelligent port allocation, performance benchmarks for large-scale connectivity |
 | 2026-03-20 | 0.3 | Added node creation templates section with batch topology provisioning, auto-linking, automatic positioning; Combined node creation + configuration workflows for rapid 1000+ node data center deployment |
 | 2026-03-20 | 0.2 | Added large-scale topology support section (1000+ nodes), direct execution mode, batch parallel execution, rule engine optimizations |
 | 2026-03-20 | 0.1 | Initial roadmap document created |
