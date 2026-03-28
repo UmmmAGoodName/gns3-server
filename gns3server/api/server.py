@@ -71,8 +71,6 @@ def get_application() -> FastAPI:
         allow_headers=["*"],
     )
 
-    #application.add_event_handler("startup", tasks.create_startup_handler(application))
-    #application.add_event_handler("shutdown", tasks.create_shutdown_handler(application))
     application.include_router(index.router, tags=["Index"])
     application.include_router(controller.router, prefix="/v3")
     application.mount("/static", StaticFiles(packages=[('gns3server', 'static')]), name="static")
