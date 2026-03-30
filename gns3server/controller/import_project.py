@@ -94,6 +94,7 @@ async def import_project(controller, project_id, stream, location=None, name=Non
 
     try:
         with zipfile_zstd.ZipFile(stream) as zip_file:
+            _check_zip_members(zip_file, path)
             await wait_run_in_executor(zip_file.extractall, path)
             _create_symbolic_links(zip_file, path)
     except zipfile_zstd.BadZipFile:
@@ -185,18 +186,59 @@ async def import_project(controller, project_id, stream, location=None, name=Non
     project = await controller.load_project(dot_gns3_path, load=False)
     return project
 
+def _check_zip_members(zip_file, destination):
+    """
+    Raise ControllerError if any entry in *zip_file* would extract outside
+    *destination* (zip-slip attack).
+
+    Python's zipfile.extractall() strips leading slashes and ``..`` components
+    since Python 3.12, but we validate explicitly here so that the behaviour
+    is not dependent on the Python version in use.
+    """
+
+    base = os.path.realpath(destination)
+    for member in zip_file.namelist():
+        target = os.path.realpath(os.path.join(base, member))
+        if not target.startswith(base + os.sep) and target != base:
+            raise ControllerError(
+                f"Cannot import project: archive entry '{member}' would be "
+                f"extracted outside the project directory"
+            )
+
+
 def _create_symbolic_links(zip_file, path):
     """
     Manually create symbolic links (if any) because ZipFile does not support it.
+
+    Only symlinks whose resolved target stays inside the project directory are
+    created.  Entries that would escape the project root are skipped with a
+    warning so that a malicious archive cannot read arbitrary files on the host.
 
     :param zip_file: ZipFile instance
     :param path: project location
     """
 
+    base = os.path.realpath(path)
     for zip_info in zip_file.infolist():
         if stat.S_ISLNK(zip_info.external_attr >> 16):
             symlink_target = zip_file.read(zip_info.filename).decode()
             symlink_path = os.path.join(path, zip_info.filename)
+
+            # Resolve the *intended* target path relative to the symlink's own
+            # directory so that both absolute and relative targets are checked.
+            symlink_dir = os.path.dirname(os.path.realpath(symlink_path))
+            if os.path.isabs(symlink_target):
+                resolved_target = os.path.realpath(symlink_target)
+            else:
+                resolved_target = os.path.realpath(os.path.join(symlink_dir, symlink_target))
+
+            if not resolved_target.startswith(base + os.sep) and resolved_target != base:
+                log.warning(
+                    f"Skipping symbolic link '{zip_info.filename}' -> '{symlink_target}': "
+                    f"target resolves outside the project directory"
+                )
+                continue
+
             try:
                 # remove the regular file and replace it by a symbolic link
                 os.remove(symlink_path)
@@ -287,6 +329,7 @@ async def _import_snapshots(snapshots_path, project_name, project_id):
             try:
                 with open(snapshot_path, "rb") as f:
                     with zipfile_zstd.ZipFile(f) as zip_file:
+                        _check_zip_members(zip_file, tmpdir)
                         await wait_run_in_executor(zip_file.extractall, tmpdir)
                         _create_symbolic_links(zip_file, tmpdir)
             except OSError as e:

@@ -25,6 +25,7 @@ import shutil
 import re
 import logging
 import inspect
+from pathlib import Path
 
 log = logging.getLogger(__name__)
 
@@ -526,7 +527,9 @@ class BaseManager:
 
         directory = self.get_images_directory()
         path = os.path.abspath(os.path.join(directory, *os.path.split(filename)))
-        if os.path.commonprefix([directory, path]) != directory:
+        # Use Path.is_relative_to() for a component-wise prefix check so that
+        # sibling directories (e.g. "images_evil/...") are correctly rejected.
+        if not Path(path).is_relative_to(Path(directory).resolve()):
             raise ComputeForbiddenError(f"Could not write image: {filename}, '{path}' is forbidden")
         log.info(f"Writing image file to '{path}'")
         try:

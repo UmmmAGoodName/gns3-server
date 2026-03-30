@@ -44,8 +44,12 @@ def is_safe_path(file_path: str, basedir: str) -> bool:
     (the file is stored inside directory or one of its sub-directory)
     """
 
-    test_path = (Path(basedir) / file_path).resolve()
-    return Path(basedir).resolve() in test_path.resolve().parents
+    base = Path(basedir).resolve()
+    test_path = (base / file_path).resolve()
+    # Path.is_relative_to() performs a proper component-wise check and
+    # correctly rejects sibling paths like "/base_evil/..." that would fool
+    # a plain string-prefix comparison.
+    return test_path != base and test_path.is_relative_to(base)
 
 
 def check_path_allowed(path: str):
@@ -57,8 +61,13 @@ def check_path_allowed(path: str):
     """
 
     project_directory = get_default_project_directory()
-    if len(os.path.commonprefix([project_directory, path])) == len(project_directory):
+    # Use Path.is_relative_to() for a component-wise check so that sibling
+    # directories (e.g. "projects_evil") are not mistaken for the project dir.
+    try:
+        Path(path).resolve().relative_to(Path(project_directory).resolve())
         return
+    except ValueError:
+        pass
 
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"The path {path} is not allowed")
 

@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import secrets
+
 from sqlalchemy import Table, Boolean, Column, String, DateTime, ForeignKey, event
 from sqlalchemy.orm import relationship
 
@@ -57,6 +59,19 @@ def create_default_super_admin(target, connection, **kw):
     config = Config.instance().settings
     default_admin_username = config.Controller.default_admin_username
     default_admin_password = config.Controller.default_admin_password.get_secret_value()
+
+    if not default_admin_password:
+        # No password configured — generate a secure random one and log it
+        # clearly so the operator can retrieve it on first start.
+        default_admin_password = secrets.token_urlsafe(16)
+        log.warning(
+            f"\n"
+            f"  *** No default_admin_password set in configuration ***\n"
+            f"  A random password has been generated for the '{default_admin_username}' account:\n"
+            f"  Password: {default_admin_password}\n"
+            f"  Set 'default_admin_password' in gns3_server.conf to suppress this message."
+        )
+
     hashed_password = auth_service.hash_password(default_admin_password)
     stmt = target.insert().values(
         username=default_admin_username,

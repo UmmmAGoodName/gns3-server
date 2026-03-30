@@ -131,14 +131,7 @@ class UsersRepository(BaseRepository):
         user = await self.get_user_by_username(username)
         if not user:
             return None
-        # Allow user to be authenticated if hashed password in the db is null
-        # this is useful for manual password recovery like:
-        # sqlite3 gns3_controller.db "UPDATE users SET hashed_password = null WHERE username = 'admin';"
-        if user.hashed_password is None:
-            log.warning(f"User '{username}' has been authenticated without a password "
-                        f"configured. Please set a new password.")
-            return user
-        if not self._auth_service.verify_password(password, user.hashed_password):
+        if user.hashed_password is None or not self._auth_service.verify_password(password, user.hashed_password):
             return None
 
         # Backup the updated_at value

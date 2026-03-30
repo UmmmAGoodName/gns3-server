@@ -36,7 +36,9 @@ class ControllerSettings(BaseModel):
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 1440  # 24 hours
     default_admin_username: str = "admin"
-    default_admin_password: SecretStr = SecretStr("admin")
+    # Leave empty so that a secure random password is generated on first run.
+    # Operators who want a fixed password may set this in gns3_server.conf.
+    default_admin_password: SecretStr = SecretStr("")
     model_config = ConfigDict(validate_assignment=True, str_strip_whitespace=True)
 
 
@@ -117,7 +119,7 @@ class ServerSettings(BaseModel):
     enable_http_auth: bool = True
     name: str = f"{socket.gethostname()} (controller)"
     protocol: ServerProtocol = ServerProtocol.http
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
     port: int = Field(3080, gt=0, le=65535)
     secrets_dir: DirectoryPath = None
     certfile: FilePath = None

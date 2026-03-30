@@ -21,6 +21,7 @@ API routes for images.
 import os
 import urllib.parse
 
+from pathlib import Path
 from fastapi import APIRouter, Request, status, Response, HTTPException
 from fastapi.responses import FileResponse
 from typing import List
@@ -31,6 +32,24 @@ from gns3server.compute.iou import IOU
 from gns3server.compute.qemu import Qemu
 
 router = APIRouter()
+
+
+def _safe_filename(filename: str, images_directory: str) -> str:
+    """
+    Decode, validate, and return the filename if it resolves safely inside
+    *images_directory*.  Raises HTTP 403 if the resolved path would escape
+    the images directory (path traversal) or HTTP 400 if the filename is empty.
+    """
+    if not filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Filename must not be empty")
+
+    base = Path(images_directory).resolve()
+    resolved = (base / filename).resolve()
+
+    if not resolved.is_relative_to(base) or resolved == base:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden path")
+
+    return filename
 
 
 @router.get("/docker/images")
@@ -60,7 +79,9 @@ async def upload_dynamips_image(filename: str, request: Request) -> None:
     """
 
     dynamips_manager = Dynamips.instance()
-    await dynamips_manager.write_image(urllib.parse.unquote(filename), request.stream())
+    filename = urllib.parse.unquote(filename)
+    _safe_filename(filename, dynamips_manager.get_images_directory())
+    await dynamips_manager.write_image(filename, request.stream())
 
 
 @router.get("/dynamips/images/{filename:path}")
@@ -69,13 +90,9 @@ async def download_dynamips_image(filename: str) -> FileResponse:
     Download a Dynamips IOS image.
     """
 
-    filename = urllib.parse.unquote(filename)
-
-    # Raise error if user try to escape
-    if filename[0] == "." or os.path.sep in filename:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-
     dynamips_manager = Dynamips.instance()
+    filename = urllib.parse.unquote(filename)
+    _safe_filename(filename, dynamips_manager.get_images_directory())
     image_path = dynamips_manager.get_abs_image_path(filename)
 
     if not os.path.exists(image_path):
@@ -101,7 +118,9 @@ async def upload_iou_image(filename: str, request: Request) -> None:
     """
 
     iou_manager = IOU.instance()
-    await iou_manager.write_image(urllib.parse.unquote(filename), request.stream())
+    filename = urllib.parse.unquote(filename)
+    _safe_filename(filename, iou_manager.get_images_directory())
+    await iou_manager.write_image(filename, request.stream())
 
 
 @router.get("/iou/images/{filename:path}")
@@ -110,13 +129,9 @@ async def download_iou_image(filename: str) -> FileResponse:
     Download an IOU image.
     """
 
-    filename = urllib.parse.unquote(filename)
-
-    # Raise error if user try to escape
-    if filename[0] == "." or os.path.sep in filename:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-
     iou_manager = IOU.instance()
+    filename = urllib.parse.unquote(filename)
+    _safe_filename(filename, iou_manager.get_images_directory())
     image_path = iou_manager.get_abs_image_path(filename)
     if not os.path.exists(image_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -135,19 +150,17 @@ async def get_qemu_images() -> List[dict]:
 async def upload_qemu_image(filename: str, request: Request) -> None:
 
     qemu_manager = Qemu.instance()
-    await qemu_manager.write_image(urllib.parse.unquote(filename), request.stream())
+    filename = urllib.parse.unquote(filename)
+    _safe_filename(filename, qemu_manager.get_images_directory())
+    await qemu_manager.write_image(filename, request.stream())
 
 
 @router.get("/qemu/images/{filename:path}")
 async def download_qemu_image(filename: str) -> FileResponse:
 
-    filename = urllib.parse.unquote(filename)
-
-    # Raise error if user try to escape
-    if filename[0] == "." or os.path.sep in filename:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-
     qemu_manager = Qemu.instance()
+    filename = urllib.parse.unquote(filename)
+    _safe_filename(filename, qemu_manager.get_images_directory())
     image_path = qemu_manager.get_abs_image_path(filename)
 
     if not os.path.exists(image_path):
