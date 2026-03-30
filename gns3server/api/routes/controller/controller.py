@@ -168,7 +168,7 @@ async def statistics() -> List[dict]:
     """
 
     compute_statistics = []
-    for compute in list(Controller.instance().computes.values()):
+    for compute in Controller.instance().computes.values():
         try:
             r = await compute.get("/statistics")
             compute_statistics.append({"compute_id": compute.id, "compute_name": compute.name, "statistics": r.json})

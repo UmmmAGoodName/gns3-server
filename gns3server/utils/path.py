@@ -21,12 +21,21 @@ from pathlib import Path
 from fastapi import HTTPException, status
 from ..config import Config
 
+# Module-level cache: populated on first call to get_default_project_directory().
+# Stores the resolved, normalised project directory path so that subsequent calls
+# skip the expanduser/normpath/makedirs syscalls on every request.
+_project_directory_cache: str = None
+
 
 def get_default_project_directory():
     """
     Return the default location for the project directory
     depending of the operating system
     """
+
+    global _project_directory_cache
+    if _project_directory_cache is not None:
+        return _project_directory_cache
 
     server_config = Config.instance().settings.Server
     path = os.path.expanduser(server_config.projects_path)
@@ -35,6 +44,7 @@ def get_default_project_directory():
         os.makedirs(path, exist_ok=True)
     except OSError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Could not create project directory: {e}")
+    _project_directory_cache = path
     return path
 
 

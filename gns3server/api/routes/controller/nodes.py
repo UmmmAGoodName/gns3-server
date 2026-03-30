@@ -161,7 +161,7 @@ def get_nodes(
 
     if project.status == "closed":
         # allow to retrieve nodes from a closed project
-        nodes = list(project.nodes.values())
+        nodes = project.nodes.values()
     else:
         nodes = [v.asdict() for v in project.nodes.values()]
 

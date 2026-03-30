@@ -19,6 +19,7 @@ API routes for templates.
 """
 
 import os
+import asyncio
 import hashlib
 import json
 
@@ -140,23 +141,26 @@ async def delete_template(
     await rbac_repo.delete_all_ace_starting_with_path(f"/templates/{template_id}")
     if prune_images and images:
         skip_images = get_builtin_disks()
-        for image in images:
-            if image.filename in skip_images:
-                continue
-            templates = await images_repo.get_image_templates(image.image_id)
-            if templates:
-                template_names = ", ".join([template.name for template in templates])
-                raise ControllerError(f"Image '{image.path}' is used by one or more templates: {template_names}")
+        candidate_images = [img for img in images if img.filename not in skip_images]
+        if candidate_images:
+            # Fetch template associations for all candidate images in one query.
+            image_ids = [img.image_id for img in candidate_images]
+            templates_by_image = await images_repo.get_images_templates(image_ids)
 
-            try:
-                os.remove(image.path)
-            except OSError:
-                log.warning(f"Could not delete image file {image.path}")
+            for image in candidate_images:
+                templates = templates_by_image.get(image.image_id, [])
+                if templates:
+                    template_names = ", ".join([template.name for template in templates])
+                    raise ControllerError(f"Image '{image.path}' is used by one or more templates: {template_names}")
 
-            print(f"Deleting image '{image.path}'")
-            success = await images_repo.delete_image(image.path)
-            if not success:
-                raise ControllerError(f"Image '{image.path}' could not removed from the database")
+                try:
+                    await asyncio.get_event_loop().run_in_executor(None, os.remove, image.path)
+                except OSError:
+                    log.warning(f"Could not delete image file {image.path}")
+
+                success = await images_repo.delete_image(image.path)
+                if not success:
+                    raise ControllerError(f"Image '{image.path}' could not removed from the database")
 
 
 @router.get(

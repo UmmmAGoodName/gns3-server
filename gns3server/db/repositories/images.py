@@ -16,8 +16,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import asyncio
 
-from typing import Optional, List
+from typing import Optional, List, Dict
 from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -89,6 +90,26 @@ class ImagesRepository(BaseRepository):
         result = await self._db_session.execute(query)
         return result.scalars().all()
 
+    async def get_images_templates(self, image_ids: List[int]) -> Dict[int, List[models.Template]]:
+        """
+        Get all templates for a collection of image IDs in a single query.
+        Returns a dict mapping image_id -> list of Templates.
+        """
+
+        if not image_ids:
+            return {}
+
+        query = (
+            select(models.Image.image_id, models.Template)
+            .join(models.Template.images)
+            .filter(models.Image.image_id.in_(image_ids))
+        )
+        result = await self._db_session.execute(query)
+        mapping: Dict[int, List[models.Template]] = {}
+        for image_id, template in result:
+            mapping.setdefault(image_id, []).append(template)
+        return mapping
+
     async def add_image(self, image_name, image_type, image_size, path, checksum, checksum_algorithm) -> models.Image:
         """
         Create a new image.
@@ -157,7 +178,7 @@ class ImagesRepository(BaseRepository):
                 continue
             try:
                 log.debug(f"Deleting image '{image.path}'")
-                os.remove(image.path)
+                await asyncio.get_event_loop().run_in_executor(None, os.remove, image.path)
             except OSError:
                 log.warning(f"Could not delete image file {image.path}")
             if await self.delete_image(image.path):

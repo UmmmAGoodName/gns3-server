@@ -20,6 +20,7 @@ from typing import Optional, List, Union
 from sqlalchemy import select, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from datetime import datetime, timezone
 
 from .base import BaseRepository
 
@@ -134,13 +135,15 @@ class UsersRepository(BaseRepository):
         if user.hashed_password is None or not self._auth_service.verify_password(password, user.hashed_password):
             return None
 
-        # Backup the updated_at value
-        updated_at = user.updated_at
-        user.last_login = func.current_timestamp()
-        await self._db_session.commit()
-        # Restore the original updated_at value
-        # so it is not affected by the last login update
-        user.updated_at = updated_at
+        # Update only last_login via a targeted UPDATE so that updated_at is
+        # not touched by the ORM's change-tracking.
+        query = (
+            update(models.User)
+            .where(models.User.user_id == user.user_id)
+            .values(last_login=datetime.now(timezone.utc))
+            .execution_options(synchronize_session=False)
+        )
+        await self._db_session.execute(query)
         await self._db_session.commit()
         return user
 
