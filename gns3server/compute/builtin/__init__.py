@@ -22,7 +22,7 @@ import shutil
 
 from ..base_manager import BaseManager
 from .builtin_node_factory import BuiltinNodeFactory, BUILTIN_NODES
-from ..config import Config
+from ...config import Config
 
 import logging
 
