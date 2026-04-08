@@ -18,9 +18,11 @@
 Builtin nodes server module.
 """
 
+import shutil
 
 from ..base_manager import BaseManager
 from .builtin_node_factory import BuiltinNodeFactory, BUILTIN_NODES
+from ..config import Config
 
 import logging
 
@@ -40,7 +42,10 @@ class Builtin(BaseManager):
         """
         :returns: List of node type supported by this class and computer
         """
-        types = ["cloud", "ethernet_hub", "ethernet_switch"]
+        types = []
+        ubridge_path = Config.instance().settings.Server.ubridge_path
+        if shutil.which(ubridge_path) is not None:
+            types.append("cloud")
         if BUILTIN_NODES["nat"].is_supported():
             types.append("nat")
         return types

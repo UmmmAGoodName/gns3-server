@@ -134,7 +134,7 @@ class Dynamips(BaseManager):
         if not os.path.isabs(dynamips_path):
             dynamips_path = shutil.which(dynamips_path)
         if dynamips_path and os.path.isfile(dynamips_path) and os.access(dynamips_path, os.X_OK):
-            return ["dynamips", "frame_relay_switch", "atm_switch"]
+            return ["dynamips", "ethernet_hub", "ethernet_switch", "frame_relay_switch", "atm_switch"]
         return []
 
     def get_dynamips_id(self, project_id):
