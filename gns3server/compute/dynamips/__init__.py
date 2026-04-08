@@ -37,7 +37,7 @@ from gns3server.utils.asyncio import wait_run_in_executor, subprocess_check_outp
 from gns3server.utils import parse_version
 from uuid import uuid4
 from ..base_manager import BaseManager
-from ..config import Config
+from ...config import Config
 from ..port_manager import PortManager
 from .dynamips_error import DynamipsError
 from .hypervisor import Hypervisor
