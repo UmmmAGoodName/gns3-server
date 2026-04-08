@@ -1068,18 +1068,9 @@ class QemuVM(BaseNode):
         if self._process_priority == "normal":
             return
 
-        if self._process_priority == "realtime":
-            priority = -20
-        elif self._process_priority == "very high":
-            priority = -15
-        elif self._process_priority == "high":
-            priority = -5
-        elif self._process_priority == "low":
-            priority = 5
-        elif self._process_priority == "very low":
-            priority = 19
-        else:
-            priority = 0
+        priority = {"realtime": -20, "very high": -15, "high": -5, "low": 5, "very low": 19}.get(
+            self._process_priority, 0
+        )
         try:
             process = await asyncio.create_subprocess_exec(
                 "renice", "-n", str(priority), "-p", str(self._process.pid)
@@ -1475,12 +1466,9 @@ class QemuVM(BaseNode):
         if result is None:
             return result
         status = result.rsplit(" ", 1)[1]
-        if status == "running" or status == "prelaunch":
-            self.status = "started"
-        elif status == "suspended":
-            self.status = "suspended"
-        elif status == "shutdown":
-            self.status = "stopped"
+        self.status = {"running": "started", "prelaunch": "started", "suspended": "suspended", "shutdown": "stopped"}.get(
+            status, self.status
+        )
         return status
 
     async def suspend(self):

@@ -614,17 +614,8 @@ class Router(BaseNode):
         :param mmap: activate/deactivate mmap (boolean)
         """
 
-        if mmap:
-            flag = 1
-        else:
-            flag = 0
-
-        await self._hypervisor.send(f'vm set_ram_mmap "{self._name}" {flag}')
-
-        if mmap:
-            log.info(f'Router "{self._name}" [{self._id}]: mmap enabled')
-        else:
-            log.info(f'Router "{self._name}" [{self._id}]: mmap disabled')
+        await self._hypervisor.send(f'vm set_ram_mmap "{self._name}" {int(mmap)}')
+        log.info(f'Router "{self._name}" [{self._id}]: mmap {"enabled" if mmap else "disabled"}')
         self._mmap = mmap
 
     @property
@@ -644,16 +635,8 @@ class Router(BaseNode):
         :param sparsemem: activate/deactivate sparsemem (boolean)
         """
 
-        if sparsemem:
-            flag = 1
-        else:
-            flag = 0
-        await self._hypervisor.send(f'vm set_sparse_mem "{self._name}" {flag}')
-
-        if sparsemem:
-            log.info(f'Router "{self._name}" [{self._id}]: sparse memory enabled')
-        else:
-            log.info(f'Router "{self._name}" [{self._id}]: sparse memory disabled')
+        await self._hypervisor.send(f'vm set_sparse_mem "{self._name}" {int(sparsemem)}')
+        log.info(f'Router "{self._name}" [{self._id}]: sparse memory {"enabled" if sparsemem else "disabled"}')
         self._sparsemem = sparsemem
 
     @property
