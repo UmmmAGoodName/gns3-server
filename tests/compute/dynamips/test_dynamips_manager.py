@@ -51,6 +51,28 @@ def test_vm_non_executable_dynamips_path(manager, config):
         manager.find_dynamips()
 
 
+def test_node_types_with_valid_dynamips(config):
+
+    with tempfile.NamedTemporaryFile() as tmpfile:
+        os.chmod(tmpfile.name, 0o755)
+        config.settings.Dynamips.dynamips_path = tmpfile.name
+        assert Dynamips.node_types() == ["dynamips", "frame_relay_switch", "atm_switch"]
+
+
+def test_node_types_with_missing_dynamips(config):
+
+    config.settings.Dynamips.dynamips_path = "/nonexistent/dynamips"
+    assert Dynamips.node_types() == []
+
+
+def test_node_types_with_non_executable_dynamips(config):
+
+    with tempfile.NamedTemporaryFile() as tmpfile:
+        os.chmod(tmpfile.name, 0o644)
+        config.settings.Dynamips.dynamips_path = tmpfile.name
+        assert Dynamips.node_types() == []
+
+
 def test_get_dynamips_id(manager):
 
     project_1 = str(uuid.uuid4())

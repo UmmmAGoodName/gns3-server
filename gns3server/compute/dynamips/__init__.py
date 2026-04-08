@@ -37,6 +37,7 @@ from gns3server.utils.asyncio import wait_run_in_executor, subprocess_check_outp
 from gns3server.utils import parse_version
 from uuid import uuid4
 from ..base_manager import BaseManager
+from ..config import Config
 from ..port_manager import PortManager
 from .dynamips_error import DynamipsError
 from .hypervisor import Hypervisor
@@ -129,7 +130,12 @@ class Dynamips(BaseManager):
         """
         :returns: List of node type supported by this class and computer
         """
-        return ["dynamips", "frame_relay_switch", "atm_switch"]
+        dynamips_path = Config.instance().settings.Dynamips.dynamips_path
+        if not os.path.isabs(dynamips_path):
+            dynamips_path = shutil.which(dynamips_path)
+        if dynamips_path and os.path.isfile(dynamips_path) and os.access(dynamips_path, os.X_OK):
+            return ["dynamips", "frame_relay_switch", "atm_switch"]
+        return []
 
     def get_dynamips_id(self, project_id):
         """
@@ -254,7 +260,7 @@ class Dynamips(BaseManager):
         if not os.path.isabs(dynamips_path):
             if sys.platform.startswith("win") and hasattr(sys, "frozen"):
                 dynamips_dir = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(sys.executable)), "dynamips"))
-                os.environ["PATH"] = os.pathsep.join(dynamips_dir) + os.pathsep + os.environ.get("PATH", "")
+                os.environ["PATH"] = dynamips_dir + os.pathsep + os.environ.get("PATH", "")
             dynamips_path = shutil.which(dynamips_path)
 
         if not dynamips_path:
