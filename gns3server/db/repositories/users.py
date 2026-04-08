@@ -85,7 +85,8 @@ class UsersRepository(BaseRepository):
             username=user.username,
             email=user.email,
             full_name=user.full_name,
-            hashed_password=hashed_password
+            hashed_password=hashed_password,
+            show_onboarding=user.show_onboarding,
         )
         self._db_session.add(db_user)
         await self._db_session.commit()

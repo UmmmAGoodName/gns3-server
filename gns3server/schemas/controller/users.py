@@ -31,6 +31,7 @@ class UserBase(BaseModel):
     is_active: bool = True
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
+    show_onboarding: bool = True
 
 
 class UserCreate(UserBase):
@@ -58,6 +59,7 @@ class LoggedInUserUpdate(BaseModel):
     password: Optional[SecretStr] = Field(None, min_length=8, max_length=100)
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
+    show_onboarding: Optional[bool] = None
 
 
 class User(DateTimeModelMixin, UserBase):

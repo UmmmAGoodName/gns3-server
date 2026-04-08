@@ -48,6 +48,7 @@ class User(BaseTable):
     token_version = Column(Integer, default=0, nullable=False, server_default="0")
     is_active = Column(Boolean, default=True)
     is_superadmin = Column(Boolean, default=False)
+    show_onboarding = Column(Boolean, default=True)
     groups = relationship("UserGroup", secondary=user_group_map, back_populates="users")
     acl_entries = relationship("ACE")
 
