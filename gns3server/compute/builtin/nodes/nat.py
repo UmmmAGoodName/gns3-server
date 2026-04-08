@@ -83,8 +83,16 @@ class Nat(Cloud):
         pass
 
     @classmethod
-    def is_supported(self):
-        return True
+    def is_supported(cls):
+        nat_interface = Config.instance().settings.Server.default_nat_interface
+        if sys.platform.startswith("linux"):
+            if not nat_interface:
+                nat_interface = "virbr0"
+            return nat_interface in [iface["name"] for iface in gns3server.utils.interfaces.interfaces()]
+        else:
+            if not nat_interface:
+                nat_interface = "vmnet8"
+            return any(nat_interface in iface["name"].lower() for iface in gns3server.utils.interfaces.interfaces())
 
     def asdict(self):
         return {
